@@ -46,11 +46,9 @@
 #include "edhoc-key-storage.h"
 #include "hmac-sha.h"
 
-/*Choos the ECC library to be used*/
-#define ECC_OS 1
-#define ECC_CC2258 2
-#define ECC_TINYDTLS 3
-#define UECC 4
+/*Choose the ECC library to be used*/
+#define ECC_CC2258 1
+#define UECC 2
 
 #define ERR_INFO_SIZE -1
 #define ERR_OKM_SIZE -2
@@ -68,52 +66,15 @@
 #endif
 #define MAX_KEY MAX_PAYLOAD
 
-#if ECC == ECC_CC2258
-#include "dev/ecc-algorithm.h"
-#include "dev/ecc-curve.h"
-#endif
-
-#if ECC == ECC_OS
-#include "ecc.h"
-#include "secp256r1.h"
-#include "sha.h"
-#endif
 
 #if ECC == UECC
-#include "lib/random.h"
-#include "sys/rtimer.h"
-#include "sys/pt.h"
-#include <uECC.h>
-#include <string.h>
-#include <stdio.h>
-#define uECC_PLATFORM uECC_arm
+#include "ecc-uecc.h"
 #endif
 
-#if ECC == UECC
-typedef struct point_affine {
-  uint8_t x[ECC_KEY_BYTE_LENGHT + 1];
-  uint8_t y[ECC_KEY_BYTE_LENGHT];
-} ecc_point_a;
-typedef struct ecc_key {
-  uint8_t kid[1];
-  uint8_t kid_sz;
-  uint8_t private_key[ECC_KEY_BYTE_LENGHT];
-  ecc_point_a public;
-} ecc_key;
-
+#if ECC == CC2538
+#include "ecc-cc2538.h"
 #endif
 
-typedef struct ecc_curve_t {
-  uECC_Curve curve;
-}ecc_curve_t;
-
-#if ECC == ECC_OS
-/*TO DO: inclue the ecc_os library */
-typedef struct ecc_key {
-  uint32_t private_key[NUMWORDS];
-  ecc_point_a public;
-} ecc_key;
-#endif
 
 typedef struct session_key {
   uint8_t k2_e[MAX_KEY];
@@ -121,16 +82,16 @@ typedef struct session_key {
   uint8_t prk_3e2m[ECC_KEY_BYTE_LENGHT];
   uint8_t prk_4x3m[ECC_KEY_BYTE_LENGHT];
   uint8_t gx[ECC_KEY_BYTE_LENGHT + 1];
+  uint8_t gy[ECC_KEY_BYTE_LENGHT];
   uint8_t th[ECC_KEY_BYTE_LENGHT];
 } session_key;
 
-uint8_t generate_IKM(uint8_t *compressed, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
+
+uint8_t generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
 uint8_t compute_TH(uint8_t *in, uint8_t in_sz, uint8_t *hash, uint8_t hash_sz);
 uint8_t hkdf_extrac(uint8_t *salt, uint8_t salt_sz, uint8_t *ikm, uint8_t ikm_sz, uint8_t *hmac);
 int8_t hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint8_t *okm, uint16_t okm_sz);
 void generate_cose_key(ecc_key *key, cose_key *cose, char *identity, uint8_t id_sz);
 void set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t curve);
-uint8_t generate_key(ecc_key *key, ecc_curve_t curve);
-uint8_t check_point_ec(ecc_key *key, uint8_t curve);
 
 #endif /* _ECDH_H_ */

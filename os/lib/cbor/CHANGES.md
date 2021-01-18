@@ -2,7 +2,6 @@ Initial source from: [https://github.com/Gunzter/contiki-ng/tree/group_oscore/os
 
 Added:
 
-- cbor_put_num()
 - cbor_put_bytes_identifier()
-- cbor_put_negative()
+
 

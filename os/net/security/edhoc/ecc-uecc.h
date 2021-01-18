@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, SICS, RISE AB
+ * Copyright (c) 2020, Industrial Systems  Institute (ISI), Patras, Greece
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,33 +30,43 @@
 
 /**
  * \file
- *      An implementation of the Concise Binary Object Representation (RFC7049).
+ *         ecc-uecc headers
  * \author
- *      Martin Gunnarsson  <martin.gunnarsson@ri.se>
- *
+ *         Lidia Pocero <pocero@isi.gr>
  */
+#ifndef _ECC_UECC_H_
+#define _ECC_UECC_H_
+
+#include <stdint.h>
+#include "edhoc-config.h"
+#include "edhoc-log.h"
+
+#include "lib/random.h"
+#include "sys/rtimer.h"
+#include "sys/pt.h"
+#include <uECC.h>
+#include <string.h>
+#include <stdio.h>
+#define uECC_PLATFORM uECC_arm
+
+typedef struct point_affine {
+  uint8_t x[ECC_KEY_BYTE_LENGHT + 1];
+  uint8_t y[ECC_KEY_BYTE_LENGHT];
+} ecc_point_a;
+typedef struct ecc_key {
+  uint8_t kid[1];
+  uint8_t kid_sz;
+  uint8_t private_key[ECC_KEY_BYTE_LENGHT];
+  ecc_point_a public;
+} ecc_key;
+
+typedef struct ecc_curve_t {
+  uECC_Curve curve;
+}ecc_curve_t;
+
+uint8_t uecc_generate_key(ecc_key *key, ecc_curve_t curve);
+void uecc_uncompress(uint8_t *compressed, uint8_t *gx, uint8_t *gy, ecc_curve_t *curve);
+uint8_t uecc_generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
 
 
-#ifndef _CBOR_H
-#define _CBOR_H
-#include <stddef.h>
-#include <inttypes.h>
-
-
-int cbor_put_nil(uint8_t **buffer);
-
-int cbor_put_text(uint8_t **buffer, char *text, uint8_t text_len);
-
-int cbor_put_array(uint8_t **buffer, uint8_t elements);
-
-int cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, uint8_t bytes_len);
-
-int cbor_put_bytes_identifier(uint8_t **buffer, uint8_t *bytes);
-
-int cbor_put_map(uint8_t **buffer, uint8_t elements);
-
-int cbor_put_unsigned(uint8_t **buffer, uint8_t value);
-
-int cbor_put_negative(uint8_t **buffer, int64_t value);
-
-#endif /* _cbor_H */
+#endif 

@@ -41,6 +41,9 @@
 #include "contiki-lib.h"
 #include "edhoc-exporter.h"
 #include "edhoc-server-API.h"
+#include "sys/rtimer.h"
+
+rtimer_clock_t t;
 
 oscore_ctx_t osc;
 
@@ -76,27 +79,87 @@ PROCESS_THREAD(edhoc_example_server, ev, data)
 
   edhoc_server_init();
   edhoc_server_start();
+
+  t = RTIMER_NOW();
+#if ECC == UECC
+  LOG_DBG("generate key\n");
+  ctx->curve.curve = uECC_secp256r1();
+  uecc_generate_key(&ctx->ephimeral_key, ctx->curve);
+  LOG_DBG("key generated\n");
+#endif
+#if ECC == CC2538
+  static key_gen_t key = {
+    .process    = &edhoc_example_server,
+    .curve_info = &nist_p_256,
+  };
+  PT_SPAWN(&edhoc_example_server.pt, &key.pt, generate_key_hw(&key));
+  
+  print_buff_8_dbg(key.compressed, ECC_KEY_BYTE_LENGHT+1);
+  print_buff_8_dbg(key.y, ECC_KEY_BYTE_LENGHT);
+  print_buff_8_dbg(key.private, ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.public.x,key.compressed,ECC_KEY_BYTE_LENGHT+1);
+  memcpy(ctx->ephimeral_key.public.y,key.y,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.private_key,key.private,ECC_KEY_BYTE_LENGHT);
+
+  #endif  
+  t = RTIMER_NOW() - t;
+  LOG_INFO("Server time to generate new key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n",  (uint32_t)((uint64_t) t  * 1000 / RTIMER_SECOND),(uint32_t)t);
+
+  LOG_DBG("x:");
+  print_buff_8_dbg(ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT+1);
+  LOG_DBG("y:");
+  print_buff_8_dbg(ctx->ephimeral_key.public.y, ECC_KEY_BYTE_LENGHT);
+  LOG_DBG("private:");
+  print_buff_8_dbg(ctx->ephimeral_key.private_key, ECC_KEY_BYTE_LENGHT);
   while(1) {
     PROCESS_WAIT_EVENT();
-    if(edhoc_server_callback(ev,&data)){
+    uint8_t res = edhoc_server_callback(ev,&data);
+    if(res == SERV_FINISHED){
       LOG_INFO("New EDHOC client finished export here the security context\n");
-       if(edhoc_exporter_oscore(&osc, ctx) < 0) {
+      t = RTIMER_NOW();
+      if(edhoc_exporter_oscore(&osc, ctx) < 0) {
           LOG_ERR("ERROR IN EXPORT CTX\n");
         } else {
+          t = RTIMER_NOW() - t;
+          LOG_INFO("Server time to generate new key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n",  (uint32_t)((uint64_t) t  * 1000 / RTIMER_SECOND),(uint32_t)t);
+
           LOG_DBG("Export OSCORE CTX success\n");
           edhoc_exporter_print_oscore_ctx(&osc);
         }
       LOG_INFO("And Get your Aplication Data\n");
       char ad3[16];
-      uint8_t ad3_sz = edhoc_server_get_ad_1(ad3);
+      uint8_t ad3_sz = edhoc_server_get_ad_3(ad3);
       LOG_INFO("AD3:");
       print_char_8_info(ad3,ad3_sz);  
-      LOG_DBG("server ctx close\n");
-      edhoc_server_close();
-      LOG_DBG("server ctx start\n");
-      edhoc_server_start();
+      res = SERV_RESTART;
+    }
+    if (res == SERV_RESTART){
+      edhoc_server_restart();
+      LOG_INFO("restart server\n");
+      t = RTIMER_NOW();
+      #if ECC == UECC
+        LOG_DBG("generate key\n");
+        ctx->curve.curve = uECC_secp256r1();
+        uecc_generate_key(&ctx->ephimeral_key, ctx->curve);
+      #endif
+      #if ECC == CC2538
+      PT_SPAWN(&edhoc_example_server.pt, &key.pt, generate_key_hw(&key));
+
+      memcpy(ctx->ephimeral_key.public.x,key.compressed,ECC_KEY_BYTE_LENGHT+1);
+      memcpy(ctx->ephimeral_key.public.y,key.y,ECC_KEY_BYTE_LENGHT);
+      memcpy(ctx->ephimeral_key.private_key,key.private,ECC_KEY_BYTE_LENGHT);
+
+      #endif
+      t = RTIMER_NOW() - t;
+      LOG_INFO("Server time to generate new key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n",  (uint32_t)((uint64_t) t  * 1000 / RTIMER_SECOND),(uint32_t)t);
+      LOG_INFO("\n");
+      LOG_DBG("x:");
+      print_buff_8_dbg(ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT+1);
+      LOG_DBG("y:");
+      print_buff_8_dbg(ctx->ephimeral_key.public.y, ECC_KEY_BYTE_LENGHT);
+      LOG_DBG("private:");
+      print_buff_8_dbg(ctx->ephimeral_key.private_key, ECC_KEY_BYTE_LENGHT);
     }
   }
-
   PROCESS_END();
 }

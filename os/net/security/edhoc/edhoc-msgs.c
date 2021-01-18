@@ -244,11 +244,13 @@ edhoc_deserialize_err(edhoc_msg_error *msg, unsigned char *buffer, uint8_t buff_
 int8_t
 edhoc_deserialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, size_t buff_sz)
 {
+  LOG_DBG("Deserialize MSG1\n");
   /*Get the METHOD */
   uint8_t unint = 0;
   uint8_t *p_out = NULL;
   size_t out_sz = 0;
   uint8_t *buff_f = buffer + buff_sz;
+
   if(buffer < buff_f) {
     unint = get_unsigned(&buffer);
     msg->method = unint;
@@ -288,6 +290,7 @@ edhoc_deserialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, size_t buff_sz)
 int8_t
 edhoc_deserialize_msg_2(edhoc_msg_2 *msg, unsigned char *buffer, size_t buff_sz)
 {
+  LOG_DBG("Deserialize MSG2\n");
   uint8_t data_sz = 0;
   msg->data_2.buf = buffer;
   if(!((0x40 <= buffer[0]) && (buffer[0] <= 0x58))) {
@@ -353,7 +356,7 @@ edhoc_get_cred_x_from_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **key)
   return ECC_KEY_BYTE_LENGHT + 1;
 }
 uint8_t
-edhoc_get_id_cred_x(uint8_t **p, uint8_t plaintext_sz, uint8_t **id_cred_x, cose_key_t *key)
+edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
 {
   *id_cred_x = *p;
   uint8_t num = get_maps_num(p);

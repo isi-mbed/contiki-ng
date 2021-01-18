@@ -32,7 +32,7 @@
  * \file
  *         ecdh, an interface between the ECC and Secure Hash Algorithms with the edhoc implementation.
  *         Interface the ECC key used library with the edhoc implementation. New ECC libraries can be include it here. 
- *         (UECC macro must be definded at config file)
+ *         (UECC macro must be definded at config file) and with the CC2538 HW module 
  *         Interface the Secure Hash Algorithms SH256 with the edhoc implementation.
  *
  * \author
@@ -42,6 +42,9 @@
 #include "ecdh.h"
 #include "contiki-lib.h"
 #include <dev/watchdog.h>
+#include "sys/rtimer.h"
+#include "sys/process.h"
+//static rtimer_clock_t time;
 
 #ifndef HKDF_INFO_MAXLEN
 #define HKDF_INFO_MAXLEN 255
@@ -51,75 +54,23 @@
 #define HKDF_OUTPUT_MAXLEN 255
 #endif
 
-#if ECC == ECC_OS
-static ecc_param param;
-#endif
-
 static uint8_t aggregate_buffer[HAS_LENGHT + HKDF_INFO_MAXLEN + 1];
 static uint8_t out_buffer[HKDF_OUTPUT_MAXLEN + HAS_LENGHT];
 
-#if ECC == UECC
-static int
-RNG(uint8_t *dest, unsigned size)
-{
-  while(size) {
-    uint8_t val = (uint8_t)random_rand();
-    *dest = val;
-    ++dest;
-    --size;
-  }
-  /* NOTE: it would be a good idea to hash the resulting random data using SHA-256 or similar. */
-  return 1;
-}
-#endif
+
 uint8_t
-generate_key(ecc_key *key, ecc_curve_t curve)
+generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve)
 {
-#if ECC == UECC /*need of sesion key 8 */
-  LOG_DBG("UECC generate key\n");
-  watchdog_periodic();
-  uECC_set_rng(&RNG);
-  uint8_t public_key[64];
-  watchdog_periodic();
-  int err = uECC_make_key(public_key, key->private_key, curve.curve);
-  watchdog_periodic();
-  memcpy(key->public.y, public_key + 32, 32);
-  uECC_compress(public_key, key->public.x, curve.curve);
-  watchdog_periodic();
-  return err;
-#endif
-
-#if ECC == ECC_OS
-  get_curve_parameters(&param);
-  ecc_generate_private_key(key->private_key, &param);
-  bigint_print(key->private_key, NUMWORDS);
-  print_buff_32(key->private_key, NUMWORDS);
-  ecc_generate_public_key(key->private_key, &key->public, &param);
-  bigint_print(key->public.x, NUMWORDS);
-  print_buff_32(key->public.x, NUMWORDS);
-  if(check_point_ec(key, 1) == 0) {
-    LOG_DBG("The point does not below to the curve");
-  }
-  return 1;
-#endif
-}
-uint8_t
-generate_IKM(uint8_t *compressed, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve)
-{
-#if ECC == ECC_OS   /*use GX and Gy */
-
-#endif
-
-#if ECC == UECC   /*use GX and Gy */
-  uint8_t public[2 * ECC_KEY_BYTE_LENGHT];
-  uECC_decompress(compressed, public, curve.curve);
-  LOG_DBG("generate shared secret\n");
-  watchdog_periodic();
-  int er = uECC_shared_secret(public, private_key, ikm, curve.curve);
-  watchdog_periodic();
-#endif
+  int er = 0;
+  #if ECC == UECC   //use GX and Gy 
+    er = uecc_generate_IKM(gx,gy,private_key,ikm,curve);
+  #endif
+  #if ECC == CC2538
+    er = cc2538_generate_IKM(gx,gy,private_key,ikm,curve);
+  #endif  
   return er;
 }
+
 static void
 hmac_sha256_init(hmac_context_t **ctx, const uint8_t *key, uint8_t key_sz)
 {
@@ -184,6 +135,7 @@ hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint
   /*Compose T(2) ... T(N) */
   memcpy(aggregate_buffer, &(out_buffer[0]), 32);
   for(int i = 1; i < N; i++) {
+    LOG_INFO("sha-256 (%d)\n",i);
     hmac_sha256_reset(&ctx, prk, prk_sz);
 
     memcpy(&(aggregate_buffer[32]), info, info_sz);
@@ -212,13 +164,9 @@ set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t cur
 {
   if(auth_key->kid_sz == 0) {
     LOG_DBG("kid_sz is 0 \n");
-#if ECC == UECC
-    uint8_t public[64];
     key->kid_sz = 0;
     memcpy(key->public.x, auth_key->x, ECC_KEY_BYTE_LENGHT + 1);
-    uECC_decompress(key->public.x, public, curve.curve);
-    memcpy(key->public.y, &public[ECC_KEY_BYTE_LENGHT], ECC_KEY_BYTE_LENGHT);
-#endif
+    memcpy(key->public.y, auth_key->y, ECC_KEY_BYTE_LENGHT);
   } else {
     key->kid_sz = auth_key->kid_sz;
     memcpy(key->kid, auth_key->kid, auth_key->kid_sz);
@@ -226,4 +174,5 @@ set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t cur
     memcpy(key->public.y, auth_key->y, ECC_KEY_BYTE_LENGHT);
   }
   generate_cose_key(key, cose, auth_key->identity, auth_key->identity_sz);
+  LOG_DBG("Cose kid len (%d)\n",(int)cose->kid.len);
 }

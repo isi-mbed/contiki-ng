@@ -43,7 +43,9 @@
 #include "coap-engine.h"
 #include "edhoc-client-API.h"
 #include "rpl.h"
+#include "sys/rtimer.h"
 
+rtimer_clock_t time;
 oscore_ctx_t osc;
 PROCESS(edhoc_example_client, "Edhoc Example Client");
 AUTOSTART_PROCESSES(&edhoc_example_client);
@@ -99,12 +101,17 @@ PROCESS_THREAD(edhoc_example_client, ev, data)
     int8_t re = edhoc_client_callback(ev,&data);
     if(re > 0){
       LOG_INFO("EDHOC protocol finished success, export here your security context\n");
+      time = RTIMER_NOW();
       if(edhoc_exporter_oscore(&osc, ctx) < 0) {
         LOG_ERR("ERROR IN EXPORT CTX\n");
       } else {
+        time = RTIMER_NOW() - time;
+        LOG_INFO("Client time to export oscore ctx: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+        time = RTIMER_NOW(); 
         LOG_INFO("Export OSCORE CTX success\n");
         edhoc_exporter_print_oscore_ctx(&osc);
       }
+     
       LOG_INFO("And Get your Aplication Data\n");
       char ad2[16];
       LOG_INFO("AD2:");

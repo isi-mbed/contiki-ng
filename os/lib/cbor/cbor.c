@@ -60,49 +60,6 @@ int cbor_put_nil(uint8_t **buffer){
 	return 1;
 }
 
-int
-cbor_put_text_long(uint8_t **buffer, char *text, uint16_t text_len)
-//cbor_put_text(uint8_t **buffer, char *text, uint8_t text_len)
-{
-  printf("LONG Text (%d)\n", text_len);
-  uint16_t ret = 0;
-
-  if(256 > text_len && text_len > 23) {
-    **buffer = 0x78;
-    (*buffer)++;
-    **buffer = text_len;
-    (*buffer)++;
-    ret += 2;
-  }else if(text_len > 255)
-  {
-    printf("text longer than 256\n");
-    **buffer = 0x79;
-    (*buffer)++;
-    **buffer = text_len & 0xff;
-    (*buffer)++;
-     **buffer = (text_len >> 8) & 0xff;
-    (*buffer)++;
-    ret += 3;
-    printf("ret: %d", ret);
-  } 
-  else {
-    **buffer = (0x60 | text_len);
-    (*buffer)++;
-    ret += 1;
-  }
-
-  memcpy(*buffer, text, text_len);
-  (*buffer) += text_len;
-  ret += text_len;
-  printf("ret: %d", ret);
-  
-  /*for(int i = 0; i < ret; i++)
-  {
-      printf("%c",**(buffer+i));
-  }*/
-  printf("\n");
-  return ret;
-}
 
 int
 cbor_put_text(uint8_t **buffer, char *text, uint8_t text_len)
@@ -139,35 +96,7 @@ cbor_put_array(uint8_t **buffer, uint8_t elements)
   (*buffer)++;
   return 1;
 }
-int
-cbor_put_bytes_long(uint8_t **buffer, uint8_t *bytes, uint16_t bytes_len)
-{
-  uint16_t ret = 0;
-  if(256 > bytes_len && bytes_len > 23) {
-    **buffer = 0x58;
-    (*buffer)++;
-    **buffer = bytes_len;
-    (*buffer)++;
-    ret += 2;
-  } else if( bytes_len > 255){
-    **buffer = 0x59;
-    (*buffer)++;
-    **buffer = bytes_len & 0xff;
-    (*buffer)++;
-     **buffer = (bytes_len >> 8) & 0xff;
-    (*buffer)++;
-    ret += 3;
-  }
-  else{
-    **buffer = (0x40 | bytes_len);
-    (*buffer)++;
-    ret += 1;
-  }
-  memcpy(*buffer, bytes, bytes_len);
-  (*buffer) += bytes_len;
-  ret += bytes_len;
-  return ret;
-}
+
 
 int
 cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, uint8_t bytes_len)
@@ -205,12 +134,11 @@ cbor_put_bytes_identifier(uint8_t **buffer, uint8_t *bytes)
   uint8_t ret = 0;
   uint8_t num = 0;
   size_t size = cbor_put_bytes(&p_bstr, bytes,1);
- // printf("size: %d\n",size);
+
   if (size == 1)
     num = bstr[0] - 24;
   else
     num = bstr[1] - 24;
- // printf("num: %d", num);
   
   if (num < 0)
   {

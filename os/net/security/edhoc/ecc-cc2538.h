@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, SICS, RISE AB
+ * Copyright (c) 2020, Industrial Systems  Institute (ISI), Patras, Greece
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,33 +30,58 @@
 
 /**
  * \file
- *      An implementation of the Concise Binary Object Representation (RFC7049).
+ *         ecc-ccc2538 headers  
+ * 
  * \author
- *      Martin Gunnarsson  <martin.gunnarsson@ri.se>
- *
+ *         Lidia Pocero <pocero@isi.gr>
  */
+#ifndef _ECC_CC2538_H_
+#define _ECC_CC2538_H_
+
+#include <stdint.h>
+#include "lib/random.h"
+#include <string.h>
+#include <stdio.h>
+#include "edhoc-config.h"
+#include "edhoc-log.h"
+
+#include "dev/ecc-algorithm.h"
+#include "dev/ecc-curve.h"
+#include "lib/random.h"
+#include "sys/rtimer.h"
+#include "sys/pt.h"
+
+typedef struct point_affine {
+  uint8_t x[ECC_KEY_BYTE_LENGHT + 1];
+  uint8_t y[ECC_KEY_BYTE_LENGHT];
+} ecc_point_a;
+typedef struct ecc_key {
+  uint8_t kid[1];
+  uint8_t kid_sz;
+  uint8_t private_key[ECC_KEY_BYTE_LENGHT];
+  ecc_point_a public;
+} ecc_key;
 
 
-#ifndef _CBOR_H
-#define _CBOR_H
-#include <stddef.h>
-#include <inttypes.h>
+typedef struct  {
+  /* Containers for the State */
+  struct pt      pt;
+  struct process *process;
+
+  ecc_curve_info_t *curve_info; /**< Curve defining the CyclicGroup */
+  /* Output Variables */
+  uint8_t compressed[33];           /**< Result Code */
+  uint8_t y[32];
+  uint8_t private[32]; 
+} key_gen_t;
+
+PT_THREAD(generate_key_hw(key_gen_t *key)); 
+
+typedef struct ecc_curve_t {
+  ecc_curve_info_t *curve;
+}ecc_curve_t;
+
+uint8_t cc2538_generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
 
 
-int cbor_put_nil(uint8_t **buffer);
-
-int cbor_put_text(uint8_t **buffer, char *text, uint8_t text_len);
-
-int cbor_put_array(uint8_t **buffer, uint8_t elements);
-
-int cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, uint8_t bytes_len);
-
-int cbor_put_bytes_identifier(uint8_t **buffer, uint8_t *bytes);
-
-int cbor_put_map(uint8_t **buffer, uint8_t elements);
-
-int cbor_put_unsigned(uint8_t **buffer, uint8_t value);
-
-int cbor_put_negative(uint8_t **buffer, int64_t value);
-
-#endif /* _cbor_H */
+#endif /* _ECDH_H_ */

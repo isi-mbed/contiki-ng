@@ -81,6 +81,12 @@
  */
 #define WELL_KNOWN ".well-known/edhoc"
 
+/* EDHOC process states */
+#define SERV_FINISHED 1
+#define SERV_RESTART 2
+
+
+
 /**
  * \brief EDHOC context struct used in the EDHOC protocol
  */
@@ -122,6 +128,21 @@ typedef struct ecc_data_even_t {
   edhoc_server_ad_t ad;
 }ecc_data_even_t;
 
+
+
+
+typedef struct serv_data_t{
+    coap_message_t *request;
+    coap_message_t *response;
+    edhoc_server_t *serv;
+   // uint8_t *msg_rx;
+   // size_t msg_rx_len;
+} serv_data_t;
+struct serv_data_t *dat_ptr;
+
+
+void edhoc_server_process(coap_message_t* req,coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, uint8_t len);
+//edhoc_server_t serv;
 /**
  * \brief Activate the EDHOC CoAp Resource
  * 
@@ -138,7 +159,18 @@ void edhoc_server_init();
  *  A new EDHOC protocol session must be created for each new EDHOC client try
  */
 void edhoc_server_start();
+/*void
+edhoc_server_start( struct process * proc);*/
 
+//typedef struct  {
+  /* Containers for the State */
+/*  struct pt      pt;
+  struct process *process;
+} edhoc_serv_t;
+
+PT_THREAD(edhoc_server_start(edhoc_serv_t *state)); */
+
+void edhoc_server_restart();
 /**
  * \brief Check if an EDHOC server session have finished
  * \param ev process event 

@@ -57,6 +57,7 @@
 #define ERR_CODE -10
 #define ERR_NOT_ALLOWED_IDENTITY -11
 #define RX_ERR_MSG -1
+#define ERR_TIMEOUT -12
 
 /*NEW RFC */
 typedef struct edhoc_msg_1 {
@@ -113,8 +114,8 @@ int8_t edhoc_deserialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, size_t b
 int8_t edhoc_deserialize_msg_2(edhoc_msg_2 *msg, unsigned char *buffer, size_t buff_sz);
 int8_t edhoc_deserialize_msg_3(edhoc_msg_3 *msg, unsigned char *buffer, size_t buff_sz);
 int8_t edhoc_deserialize_err(edhoc_msg_error *msg, unsigned char *buffer, uint8_t buff_sz);
+uint8_t edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key);
 
-uint8_t edhoc_get_id_cred_x(uint8_t **p, uint8_t plaintext_sz, uint8_t **id_cred_x, cose_key_t *key);
 uint8_t edhoc_get_sign(uint8_t **p, uint8_t **sign);
 uint8_t edhoc_get_ad(uint8_t **p, uint8_t *ad);
 
