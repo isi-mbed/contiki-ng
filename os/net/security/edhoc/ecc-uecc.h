@@ -30,77 +30,43 @@
 
 /**
  * \file
- *         ecdh header
- *
+ *         ecc-uecc headers
  * \author
  *         Lidia Pocero <pocero@isi.gr>
  */
-#ifndef _ECDH_H_
-#define _ECDH_H_
+#ifndef _ECC_UECC_H_
+#define _ECC_UECC_H_
 
 #include <stdint.h>
+#include "edhoc-config.h"
+#include "edhoc-log.h"
+
 #include "lib/random.h"
+#include "sys/rtimer.h"
+#include "sys/pt.h"
+#include <uECC.h>
 #include <string.h>
 #include <stdio.h>
-#include "cose.h"
-#include "edhoc-key-storage.h"
-#include "hmac-sha.h"
+#define uECC_PLATFORM uECC_arm
 
-/*Choose the ECC library to be used*/
-#define ECC_CC2258 1
-#define UECC 2
-#define TEST_TOTAL 0
-#define TEST_VECTOR 1
+typedef struct point_affine {
+  uint8_t x[ECC_KEY_BYTE_LENGHT];
+  uint8_t y[ECC_KEY_BYTE_LENGHT];
+} ecc_point_a;
+typedef struct ecc_key {
+  uint8_t kid[1];
+  uint8_t kid_sz;
+  uint8_t private_key[ECC_KEY_BYTE_LENGHT];
+  ecc_point_a public;
+} ecc_key;
 
-#ifdef EDHOC_TEST 
-#define TEST EDHOC_TEST
-#else
-#define TEST TEST_TOTAL
-#endif
+typedef struct ecc_curve_t {
+  uECC_Curve curve;
+}ecc_curve_t;
 
-#define ERR_INFO_SIZE -1
-#define ERR_OKM_SIZE -2
-
-#ifdef EDHOC_CONF_ECC
-#define ECC EDHOC_CONF_ECC
-#else
-#define ECC UECC
-#endif
-
-#ifdef EDHOC_CONF_MAX_PAYLOAD
-#define MAX_PAYLOAD EDHOC_CONF_MAX_PAYLOAD
-#else
-#define MAX_PAYLOAD 256
-#endif
-#define MAX_KEY MAX_PAYLOAD
+uint8_t uecc_generate_key(ecc_key *key, ecc_curve_t curve);
+void uecc_uncompress(uint8_t *compressed, uint8_t *gx, uint8_t *gy, ecc_curve_t *curve);
+uint8_t uecc_generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
 
 
-#if ECC == UECC
-#include "ecc-uecc.h"
-#endif
-
-#if ECC == CC2538
-#include "ecc-cc2538.h"
-#endif
-
-
-
-typedef struct session_key {
-  uint8_t k2_e[MAX_KEY];
-  uint8_t prk_2e[ECC_KEY_BYTE_LENGHT];
-  uint8_t prk_3e2m[ECC_KEY_BYTE_LENGHT];
-  uint8_t prk_4x3m[ECC_KEY_BYTE_LENGHT];
-  uint8_t gx[ECC_KEY_BYTE_LENGHT];
-  uint8_t gy[ECC_KEY_BYTE_LENGHT];
-  uint8_t th[ECC_KEY_BYTE_LENGHT];
-} session_key;
-
-
-uint8_t generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
-uint8_t compute_TH(uint8_t *in, uint8_t in_sz, uint8_t *hash, uint8_t hash_sz);
-uint8_t hkdf_extrac(uint8_t *salt, uint8_t salt_sz, uint8_t *ikm, uint8_t ikm_sz, uint8_t *hmac);
-int8_t hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint8_t *okm, uint16_t okm_sz);
-void generate_cose_key(ecc_key *key, cose_key *cose, char *identity, uint8_t id_sz);
-void set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t curve);
-
-#endif /* _ECDH_H_ */
+#endif 

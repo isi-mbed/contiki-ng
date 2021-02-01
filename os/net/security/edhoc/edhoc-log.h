@@ -50,6 +50,7 @@
 #define LOG_LEVEL LOG_LEVEL_EDHOC
 #endif
 
+
 typedef struct bstr {
   uint8_t *buf;
   size_t len;

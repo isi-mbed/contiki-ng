@@ -162,8 +162,8 @@ cose_decrypt(cose_encrypt0 *enc)
   uint8_t str_encode[2 * COSE_MAX_BUFFER];
   uint8_t str_sz = encode_enc_structure(str, str_encode);
 
-  LOG_DBG("encode AAD size %d:", str_sz);
-  cose_print_buff_8_dbg(str_encode, str_sz);
+  LOG_INFO("(CBOR-encoded AAD) (%d bytes):", str_sz);
+  cose_print_buff_8_info(str_encode, str_sz);
   LOG_DBG("Key:");
   cose_print_buff_8_dbg(enc->key, KEY_LEN);
   LOG_DBG("nonce:");
@@ -215,8 +215,8 @@ cose_encrypt(cose_encrypt0 *enc)
 
   uint8_t str_encode[2 * COSE_MAX_BUFFER];
   uint8_t str_sz = encode_enc_structure(str, str_encode);
-  LOG_DBG("encode AAD size %d:", str_sz);
-  cose_print_buff_8_dbg(str_encode, str_sz);
+  LOG_INFO("(CBOR-encoded AAD) (%d bytes):", str_sz);
+  cose_print_buff_8_info(str_encode, str_sz);
   LOG_DBG("Key:");
   cose_print_buff_8_dbg(enc->key, KEY_LEN);
   LOG_DBG("nonce:");

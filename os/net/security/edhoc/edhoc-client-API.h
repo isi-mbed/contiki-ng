@@ -49,6 +49,10 @@
 #include "edhoc.h"
 #include "coap-timer.h"
 #include "coap-callback-api.h"
+#include "coap-blocking-api.h"
+
+
+
 
 /**
  * \brief The CoAp Server IP where run the EDHOC Responder

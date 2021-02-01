@@ -36,6 +36,8 @@
  */
 
 #include "edhoc-server-API.h"
+#include "sys/pt.h"
+#include "sys/rtimer.h"
 
 /* EDHOC Client protocol states */
 #define NON_MSG 0
@@ -43,21 +45,38 @@
 #define RX_MSG3 2
 #define TX_MSG_ERR 3
 #define EXP_READY 4
+#define RESTART 5
 
-/* EDHOC process states */
-#define SERV_FINISHED 1
+static rtimer_clock_t time;
+static rtimer_clock_t time_total;
+
+#define RTIME_MS 32768
 
 static coap_timer_t timer;
 static uint8_t msg_rx[MAX_DATA_LEN];
 static size_t msg_rx_len;
-static edhoc_server_t serv;
+static edhoc_server_t server;
+static edhoc_server_t *serv;
 static process_event_t new_ecc_event;
 static ecc_data_even_t new_ecc;
+
+static coap_message_t *request;
+static coap_message_t *response;
+static int er = 0;
+uint8_t more = 0;
+static cose_key_t key;
+static uint8_t * pt = NULL;
+static edhoc_msg_3 msg3;
+PROCESS(edhoc_server, "Edhoc Server");
 
 int8_t 
 edhoc_server_callback(process_event_t ev, void *data){
   if((ev == new_ecc_event) && (new_ecc.val == SERV_FINISHED)){
-    return 1;
+    return SERV_FINISHED;
+  }
+  if((ev == new_ecc_event) && (new_ecc.val == SERV_RESTART)){
+     LOG_DBG("server callback: SERV_RESTART\n");
+    return SERV_RESTART;
   }
   return 0;
 }
@@ -85,33 +104,31 @@ server_timeout_callback(coap_timer_t *timer)
   LOG_ERR("Timeout\n");
   coap_timer_stop(timer);
   edhoc_server_close();
-  LOG_DBG("server ctx start\n");
-  edhoc_server_start();
+  new_ecc.val = SERV_RESTART;
+  process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
 }
-static void
-server_restart()
+
+void
+edhoc_server_restart()
 {
-  serv.con_num = 0;
-  serv.state = 0;
-  serv.rx_msg1 = false;
-  serv.rx_msg3 = false;
+  serv->con_num = 0;
+  serv->state = 0;
+  serv->rx_msg1 = false;
+  serv->rx_msg3 = false;
+  serv->state = NON_MSG;
+  edhoc_get_authentication_key(ctx);
 }
 void
 edhoc_server_start()
 {
   LOG_INFO("SERVER: Edhoc new\n");
   ctx = edhoc_new();
-  LOG_INFO("\n");
-  LOG_DBG("x:");
-  print_buff_8_dbg(ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT + 1);
-  LOG_DBG("y:");
-  print_buff_8_dbg(ctx->ephimeral_key.public.y, ECC_KEY_BYTE_LENGHT);
-  LOG_DBG("private:");
-  print_buff_8_dbg(ctx->ephimeral_key.private_key, ECC_KEY_BYTE_LENGHT);
-  serv.state = NON_MSG;
-  edhoc_get_authentication_key(ctx);
-  server_restart();
+  memset(&server,0,sizeof(edhoc_server_t));
+  serv =&server;
+  edhoc_server_restart();
 }
+
+
 void
 edhoc_server_init()
 {
@@ -124,179 +141,216 @@ edhoc_server_close()
 {
   edhoc_finalize(ctx);
 }
-void
-server_protocol(coap_message_t *request)
-{
-  int er = 0;
-  int pro = 0;
-  switch(serv.state) {
-  case NON_MSG:
-    LOG_DBG("NON_MSG\n");
-    coap_timer_set_callback(&timer, server_timeout_callback);
-    coap_timer_set(&timer, SERV_TIMEOUT_VAL);
 
-  case RX_MSG1:
-    LOG_DBG("RX_MSG1 (%d):\n", (int)msg_rx_len);
-    print_buff_8_dbg(msg_rx, msg_rx_len);
-    er = edhoc_handler_msg_1(ctx, msg_rx, msg_rx_len, (uint8_t *)new_ecc.ad.ad_1);
-    if(er == RX_ERR_MSG) {
-      LOG_DBG("error code (%d)\n", er);
-      serv.state = NON_MSG;
-      coap_timer_stop(&timer);
-      edhoc_server_close();
-      LOG_DBG("server ctx start\n");
-      edhoc_server_start();
-    } else if(er < RX_ERR_MSG) {
-      LOG_DBG("Send MSG error with code (%d)\n", er);
-      ctx->tx_sz = edhoc_gen_msg_error(ctx->msg_tx, ctx, er);
-      serv.state = TX_MSG_ERR;
-      coap_timer_stop(&timer);
-      edhoc_server_close();
-      LOG_DBG("server ctx start\n");
-      edhoc_server_start();
-    } else {
-
-      /* Set the 5-tuple ipaddres to identify the connection */
-      memcpy(&serv.con_ipaddr, &request->src_ep->ipaddr, sizeof(uip_ipaddr_t));
-      new_ecc.ad.ad_1_sz = er;
-      if(new_ecc.ad.ad_1_sz > 0 && new_ecc.ad.ad_1) {
-        LOG_INFO("APP DATA MSG 1 (%d):", new_ecc.ad.ad_1_sz);
-        print_char_8_info((char *)new_ecc.ad.ad_1, new_ecc.ad.ad_1_sz);
-      }
-      serv.rx_msg1 = true;
-      /*Generate MSG2 */
-      edhoc_gen_msg_2(ctx, (uint8_t *)new_ecc.ad.ad_2, new_ecc.ad.ad_2_sz);
-      LOG_INFO("MSG2 (%d)\n", ctx->tx_sz);
-      print_buff_8_dbg(ctx->msg_tx, ctx->tx_sz);
-      serv.state = RX_MSG3;
-    }
-    break;
-  case RX_MSG3:
-    LOG_DBG("RX_MSG3 (%d):\n", (int)msg_rx_len);
-    print_buff_8_dbg(msg_rx, msg_rx_len);
-    er = edhoc_handler_msg_3(ctx, msg_rx, msg_rx_len, (uint8_t *)new_ecc.ad.ad_3);
-    if(er == RX_ERR_MSG) {
-      LOG_DBG("error code (%d)\n", er);
-      serv.state = NON_MSG;
-      coap_timer_stop(&timer);
-      edhoc_server_close();
-      LOG_DBG("server ctx start\n");
-      edhoc_server_start();
-      break;
-    } else if(er < RX_ERR_MSG) {
-      LOG_DBG("Send MSG error with code (%d)\n", er);
-      ctx->tx_sz = edhoc_gen_msg_error(ctx->msg_tx, ctx, er);
-      coap_timer_stop(&timer);
-      edhoc_server_close();
-      LOG_DBG("server ctx start\n");
-      edhoc_server_start();
-      serv.state = TX_MSG_ERR;
-      break;
-    } else {
-      /*TODO: Include a way to pass aplictaion msgs. */
-      new_ecc.ad.ad_3_sz = er;
-      if(new_ecc.ad.ad_3_sz > 0 && new_ecc.ad.ad_3) {
-        LOG_INFO("APP DATA MSG 3 (%d):", new_ecc.ad.ad_3_sz);
-        print_char_8_info((char *)new_ecc.ad.ad_3, new_ecc.ad.ad_3_sz);
-      }
-
-      serv.state = EXP_READY;
-      serv.rx_msg3 = true;
-    }
-  case EXP_READY:
-    if(serv.rx_msg1 && serv.rx_msg3) {
-      LOG_INFO("EXPORTER\n");
-      ctx->tx_sz = 0;
-      new_ecc.val = SERV_FINISHED;
-      coap_timer_stop(&timer);
-      pro = process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
-      LOG_DBG("PROCESS POST EVENT: %d\n", pro);
-      coap_timer_stop(&timer);
-      break;
-    } else {
-      LOG_ERR("Protocol steap missed\n");
-      serv.state = NON_MSG;
-    }
+void 
+edhoc_server_process(coap_message_t* req,coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, uint8_t len){
+  serv_data_t serv_data = {req,res, ser};
+  dat_ptr = &serv_data; 
+  process_data_t dat = dat_ptr;
+  memcpy(msg_rx,msg,len);
+  msg_rx_len = len;
+  process_start(&edhoc_server,dat);
+  LOG_DBG("process finished before is running\n");
+  while(process_is_running(&edhoc_server)){
+    process_run();
   }
+  LOG_DBG("process finished!\n");
 }
-void
-edhoc_server_resource(coap_message_t *request, coap_message_t *response)
-{
+
+PROCESS_THREAD(edhoc_server, ev, data){
+  PROCESS_BEGIN();
+  request = ((struct serv_data_t *)data)->request;
+  response = ((struct serv_data_t *)data)->response;
+  serv = ((struct serv_data_t *)data)->serv;
   LOG_DBG("/edhoc POST (%s %u)\n", request->type == COAP_TYPE_CON ? "CON" : "NON", request->mid);
   LOG_DBG("PAYLOAD:");
   print_buff_8_dbg((uint8_t *)request->payload, request->payload_len);
 
-  LOG_DBG("con_num:%u\n", serv.con_num);
+  LOG_DBG("con_num:%u\n", serv->con_num);
+  if (serv->state ==  EXP_READY)
+  {
+    LOG_DBG("process exit\n");
+  }
+  //Check the 5-tuple information before retrive the state protocol
+  if((serv->state != NON_MSG) && (memcmp(&serv->con_ipaddr, &request->src_ep->ipaddr, sizeof(uip_ipaddr_t)) != 0)) {
+    LOG_ERR("rx request from an error ipaddr\n");
+    coap_set_payload(response, NULL, 0);
+    coap_set_status_code(response, BAD_REQUEST_4_00);
+  } else {
 
-  if(coap_is_option(request, COAP_OPTION_BLOCK1)) {
-    LOG_DBG("Blockwise: block 1 request: Num: %" PRIu32
-            ", More: %u, Size: %u, Offset: %" PRIu32 "\n",
-            request->block1_num,
-            request->block1_more,
-            request->block1_size,
-            request->block1_offset);
+    switch(serv->state) {
+    case NON_MSG:
+      LOG_DBG("NON_MSG\n");
+      coap_timer_set_callback(&timer, server_timeout_callback);
+      coap_timer_set(&timer, SERV_TIMEOUT_VAL);
 
-    if(coap_block1_handler(request, response, msg_rx, &msg_rx_len, MAX_DATA_LEN)) {
-      LOG_DBG("handeler (%d)\n", (int)msg_rx_len);
-      print_buff_8_dbg(msg_rx, msg_rx_len);
-      /*More blocks will followr*/
-      return;
-    }
-    /*Check the 5-tuple information before retrive the state protocol*/
-    if((serv.state != NON_MSG) && (memcmp(&serv.con_ipaddr, &request->src_ep->ipaddr, sizeof(uip_ipaddr_t)) != 0)) {
-      LOG_ERR("rx request from an error ipaddr\n");
-      coap_set_payload(response, NULL, 0);
-      coap_set_status_code(response, BAD_REQUEST_4_00);
-    } else {
-      LOG_INFO("correct ipdaadr\n");
-      server_protocol(request);
-      if(serv.state == NON_MSG) {
-        LOG_ERR("RX MSG ERROR response\n");
-        coap_set_payload(response, NULL, 0);
-        coap_set_status_code(response, DELETED_2_02);
+    case RX_MSG1:
+      LOG_INFO("----------------------------------Handler message_1-----------------------------\n"); 
+      LOG_INFO("RX message_1 (CBOR Sequence) (%d bytes):\n", (int)msg_rx_len);
+      print_buff_8_info(msg_rx, msg_rx_len);
+      
+     // time_total = RTIMER_NOW();
+     // time = RTIMER_NOW();  
+ 
+      er = edhoc_handler_msg_1(ctx, msg_rx, msg_rx_len, (uint8_t *)new_ecc.ad.ad_1);
+     // time = RTIMER_NOW() - time;
+     // LOG_INFO("Server time to handler MSG1: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+     /* LOG_DBG("gx:");
+      print_buff_8_dbg(ctx->eph_key.gx,ECC_KEY_BYTE_LENGHT);
+      print_buff_8_dbg(ctx->session.Gx.buf,ECC_KEY_BYTE_LENGHT);
+
+      LOG_DBG("gy:");
+      print_buff_8_dbg(ctx->eph_key.gy,ECC_KEY_BYTE_LENGHT);*/
+
+      if(er == RX_ERR_MSG) {
+        LOG_DBG("error code (%d)\n", er);
+        serv->state = NON_MSG;
+        coap_timer_stop(&timer);
+        edhoc_server_close();
+        new_ecc.val = SERV_RESTART;
+        process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
+      
+      } else if(er < RX_ERR_MSG) {
+        LOG_DBG("Send MSG error with code (%d)\n", er);
+        ctx->tx_sz = edhoc_gen_msg_error(ctx->msg_tx, ctx, er);
+        serv->state = TX_MSG_ERR;
+        coap_timer_stop(&timer); 
+        edhoc_server_close();
+        new_ecc.val = SERV_RESTART;
+        process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
+    
       } else {
-        LOG_DBG("Set response payload 1\n");
-        response->payload = (uint8_t *)ctx->msg_tx;
-        response->payload_len = ctx->tx_sz;
-        if(response->payload_len == 0) {
-          memset(&(response->options), 0, 8);
-          memset(&(request->options), 0, 8);
-          LOG_DBG("Payload len 0 \n");
-          coap_set_header_block1(response, request->block1_num, 0, COAP_MAX_CHUNK_SIZE);
-        } else {
-          LOG_DBG("Payload len > 0\n");
-          coap_set_header_block1(response, request->block1_num, 0, COAP_MAX_CHUNK_SIZE);
-          coap_set_header_block2(response, 0, ctx->tx_sz > COAP_MAX_CHUNK_SIZE ? 1 : 0, COAP_MAX_CHUNK_SIZE);
+        // Set the 5-tuple ipaddres to identify the connection 
+        memcpy(&serv->con_ipaddr, &request->src_ep->ipaddr, sizeof(uip_ipaddr_t));
+        new_ecc.ad.ad_1_sz = er;
+        if(new_ecc.ad.ad_1_sz > 0 && new_ecc.ad.ad_1) {
+          LOG_INFO("AD_1 (%d bytes):", new_ecc.ad.ad_1_sz);
+          print_char_8_info((char *)new_ecc.ad.ad_1, new_ecc.ad.ad_1_sz);
         }
-        if(serv.state == TX_MSG_ERR) {
-          serv.state = NON_MSG;
-          coap_set_status_code(response, CHANGED_2_04);
-        } else {
-          coap_set_status_code(response, CHANGED_2_04);
-        }
-        LOG_DBG("Blockwise: block 1 response: Num: %" PRIu32
-                ", More: %u, Size: %u, Offset: %" PRIu32 "\n",
-                response->block1_num,
-                response->block1_more,
-                response->block1_size,
-                response->block1_offset);
-        LOG_DBG("Blockwise: block 2 response: Num: %" PRIu32
-                ", More: %u, Size: %u, Offset: %" PRIu32 "\n",
-                response->block2_num,
-                response->block2_more,
-                response->block2_size,
-                response->block2_offset);
+        serv->rx_msg1 = true;
+        //Generate MSG2 
+        //time = RTIMER_NOW();
+        LOG_INFO("---------------------------------generate message_2-----------------------------\n"); 
+        edhoc_gen_msg_2(ctx, (uint8_t *)new_ecc.ad.ad_2, new_ecc.ad.ad_2_sz);
+        /*time = RTIMER_NOW() - time;
+        LOG_INFO("Server time to gen MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+        time = RTIMER_NOW();  */
+        LOG_INFO("message_2 (CBOR Sequence) (%d bytes):", ctx ->tx_sz);
+        print_buff_8_info(ctx->msg_tx, ctx->tx_sz);
+        serv->state = RX_MSG3;
       }
-      LOG_DBG("Set BLOCK 2 (%d): ", response->payload_len);
-      print_buff_8_dbg(response->payload, response->payload_len);
+      break;
+    case RX_MSG3:
+      LOG_INFO("----------------------------------Handler message_3-----------------------------\n"); 
+      LOG_INFO("RX message_3 (%d bytes):", (int)msg_rx_len);
+      print_buff_8_info(msg_rx, msg_rx_len);
+      time = RTIMER_NOW();
+      er = edhoc_handler_msg_3(&msg3,ctx, msg_rx, msg_rx_len);
+
+      /*time = RTIMER_NOW() - time;
+      LOG_INFO("Server time to handler MSG3: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+      time = RTIMER_NOW();  */
+      if(er > 0){
+        er = edhoc_get_auth_key(ctx,&pt,&key);
+          LOG_DBG("Key identity:");
+          print_char_8_dbg(key.identity,key.identity_sz);
+          LOG_DBG("Key id size: (%d)",key.kid_sz);
+      }
+      if(er > 0){
+        er = edhoc_authenticate_msg(ctx,&pt,msg3.cipher.len,(uint8_t *)new_ecc.ad.ad_3,&key);
+       // time = RTIMER_NOW() - time;
+        //LOG_INFO("Server time to authenticate: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+      }
+
+      if(er == RX_ERR_MSG) {
+        LOG_DBG("error code (%d)\n", er);
+        serv->state = NON_MSG;
+        coap_timer_stop(&timer);
+        edhoc_server_close();
+        new_ecc.val = SERV_RESTART;
+        process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
+        break;
+      } else if(er < RX_ERR_MSG) {
+        LOG_DBG("Send MSG error with code (%d)\n", er);
+        ctx->tx_sz = edhoc_gen_msg_error(ctx->msg_tx, ctx, er);
+        coap_timer_stop(&timer);
+        edhoc_server_close();
+        new_ecc.val = SERV_RESTART;
+        process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
+        serv->state = TX_MSG_ERR;
+        break;
+      } else {
+        //TODO: Include a way to pass aplictaion msgs. 
+        new_ecc.ad.ad_3_sz = er;
+        if(new_ecc.ad.ad_3_sz > 0 && new_ecc.ad.ad_3) {
+          LOG_INFO("AP_3 (%d bytes):", new_ecc.ad.ad_3_sz);
+          print_char_8_info((char *)new_ecc.ad.ad_3, new_ecc.ad.ad_3_sz);
+        }
+
+        serv->state = EXP_READY;
+        serv->rx_msg3 = true;
+      }
+    case EXP_READY:
+      if(serv->rx_msg1 && serv->rx_msg3) {
+        LOG_INFO("--------------EXPORTER------------------------\n");
+        ctx->tx_sz = 0;
+        new_ecc.val = SERV_FINISHED;
+        time_total = RTIMER_NOW() - time_total;
+        LOG_INFO("Server time to finshed: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)time_total * 1000 / RTIMER_SECOND,(uint32_t)time_total);
+        time_total = RTIMER_NOW();  
+        coap_timer_stop(&timer);
+        process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
+        coap_timer_stop(&timer);
+        break;
+      } else {
+        LOG_ERR("Protocol steap missed\n");
+        serv->state = NON_MSG;
+      }
     }
   }
-  if(coap_is_option(request, COAP_OPTION_BLOCK2) && !coap_is_option(request, COAP_OPTION_BLOCK1)) {
+  
+  if(serv->state == NON_MSG) {
+    LOG_ERR("RX MSG ERROR response\n");
+    coap_set_payload(response, NULL, 0);
+    coap_set_status_code(response, DELETED_2_02);
+  }
+    
+  else{
+    LOG_DBG("Set response payload 1\n");
     response->payload = (uint8_t *)ctx->msg_tx;
     response->payload_len = ctx->tx_sz;
-    coap_set_option(response, COAP_OPTION_BLOCK2);
     coap_set_status_code(response, CHANGED_2_04);
-    LOG_DBG("BLOCK 2 (%d): ", response->payload_len);
-    print_buff_8_dbg(response->payload, response->payload_len);
+    if(response->payload_len == 0) {
+      memset(&(response->options), 0, 8);
+      memset(&(request->options), 0, 8);
+      LOG_DBG("Payload len 0 \n");
+    } else {
+      LOG_DBG("Payload len > 0\n");
+      memset(&(response->options), 0, 8);
+      coap_set_header_block2(response, 0, ctx->tx_sz > COAP_MAX_CHUNK_SIZE ? 1 : 0, COAP_MAX_CHUNK_SIZE);
+    }
+    if(serv->state == TX_MSG_ERR) {
+      serv->state = NON_MSG;
+      coap_set_status_code(response, CHANGED_2_04);
+    } else {
+      coap_set_status_code(response, CHANGED_2_04);
+    }
+    LOG_DBG("Blockwise: block 1 response: Num: %" PRIu32
+            ", More: %u, Size: %u, Offset: %" PRIu32 "\n",
+            response->block1_num,
+            response->block1_more,
+            response->block1_size,
+            response->block1_offset);
+    LOG_DBG("Blockwise: block 2 response: Num: %" PRIu32
+            ", More: %u, Size: %u, Offset: %" PRIu32 "\n",
+            response->block2_num,
+            response->block2_more,
+            response->block2_size,
+            response->block2_offset);
   }
+
+  LOG_DBG("Set BLOCK 2 (%d): ", response->payload_len);
+  print_buff_8_dbg(response->payload, response->payload_len); 
+  LOG_DBG("response status(%d)\n ", response->code);
+  PROCESS_END();
 }

@@ -39,6 +39,8 @@
 #include "lib/memb.h"
 #include "contiki-lib.h"
 #include "sys/timer.h"
+#include "sys/rtimer.h"
+
 
 /* EDHOC Client protocol states */
 #define NON_MSG 0
@@ -53,6 +55,8 @@
 #define CL_BLOCK1 3
 #define CL_POST 4
 #define CL_TRIES_EXPIRE 5
+#define CL_PROTOCOL 6
+#define CL_BLOCKING 7
 
 /*For use of block-wise post and answer */
 static coap_callback_request_state_t state;
@@ -66,11 +70,29 @@ static  coap_timer_t timer;
 static edhoc_data_even_t edhoc_state;
 static process_event_t edhoc_event;
 
-#define RTIME_MS 32768
-static clock_time_t time;
-static uint8_t attempt = 0;
 
+static rtimer_clock_t  time;
+static rtimer_clock_t time_total;
+static uint8_t attempt = 0;
+static int er = 0;
+static cose_key_t key;
+static uint8_t * pt = NULL;
+static edhoc_msg_2 msg2;
 PROCESS(edhoc_client, "Edhoc Client");
+PROCESS(edhoc_client_protocol, "Edhoc Client Protocol");
+
+#if TEST == TEST_VECTOR
+  /*uint8_t eph_private_i[ECC_KEY_BYTE_LENGHT] = {0xae,0x11,0xa0,0xdb,0x86,0x3c,0x02,0x27,0xe5,0x39,0x92,0xfe,0xb8,0xf5,0x92,0x4c,0x50,0xd0,0xa7,0xba,0x6e,0xea,0xb4,0xad
+  ,0x1f,0xf2,0x45,0x72,0xf4,0xf5,0x7c,0xfa};   
+  uint8_t eph_pub_gx_i[ECC_KEY_BYTE_LENGHT] = {0x8d,0x3e,0xf5,0x6d,0x1b,0x75,0x0a,0x43,0x51,0xd6,0x8a,0xc2,0x50,0xa0,0xe8,0x83,0x79,0x0e,0xfc,0x80,0xa5,0x38,0xa4,0x44
+  ,0xee,0x9e,0x2b,0x57,0xe2,0x44,0x1a,0x7c};*/
+  uint8_t eph_pub_x_i[ECC_KEY_BYTE_LENGHT] = {0x47,0x57,0x76,0xf8,0x44,0x97,0x9a,0xd0,0xb4,0x63,0xc5,0xa6,0xa4,0x34,0x3a,0x66,0x3d,0x17,0xa3,0xa8,0x0e,0x38,0xa8,0x1d,
+  0x3e,0x34,0x96,0xf6,0x06,0x1f,0xd7,0x16};
+  uint8_t eph_pub_y_i[ECC_KEY_BYTE_LENGHT] = {0x7b,0x21,0x4f,0x54,0xa2,0x3e,0xd2,0x05,0x39,0x5b,0x6a,0xe3,0xb6,0xa7,0x4f,0xcf,0xe9,0xb3,0xe4,0x0a,0xcf,0x89,0xf5,0x24,
+  0xd4,0xa0,0x6e,0x0c,0x8d,0x91,0xfb,0x69};
+  uint8_t eph_private_i[ECC_KEY_BYTE_LENGHT] = {0x0a,0xe7,0x99,0x77,0x5c,0xb1,0x51,0xbf,0xc2,0x54,0x87,0x35,0xf4,0x4a,0xcf,0x1d,0x94,0x29,0xcf,0x9a,0x95,0xdd,0xcd,0x2a,
+  0x13,0x9e,0x3a,0x28,0xd8,0x63,0xa0,0x81}; 
+#endif
 
 int8_t 
 edhoc_client_callback(process_event_t ev, void *data){
@@ -137,86 +159,6 @@ client_new()
   cli = client_context_new();
   return cli;
 }
-/*Used for block-wise post and answer */
-static void
-client_protocol(coap_message_t *response)
-{
-  int er = 0;
-  switch(cli->state) {
-
-  case RX_MSG2:
-
-    LOG_DBG("RX_MSG2 (%d):", ctx->rx_sz);
-    print_buff_8_dbg(ctx->msg_rx, ctx->rx_sz);
-    LOG_DBG("code: %d\n", response->code);
-    er = edhoc_handler_msg_2(ctx, ctx->msg_rx, ctx->rx_sz, (uint8_t *)edhoc_state.ad.ad_2);
-
-    if(er == RX_ERR_MSG) {
-      LOG_ERR("error code (%d)\n", er);
-      edhoc_state.val = CL_RESTART;
-      coap_timer_stop(&timer);
-      pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
-    } else if(er < RX_ERR_MSG) {
-      LOG_ERR("CLient: Send MSG error with code (%d)\n", er);
-      ctx->tx_sz = edhoc_gen_msg_error(ctx->msg_tx, ctx, er);
-      edhoc_state.val = CL_POST;
-      pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
-    } else {
-      /*TODO: Include a way to pass aplictaion msgs. */
-      edhoc_state.ad.ad_2_sz = er;
-      if(edhoc_state.ad.ad_2_sz > 0 && edhoc_state.ad.ad_2) {
-        LOG_INFO("APP DATA MSG 2 (%d):", edhoc_state.ad.ad_2_sz);
-        print_char_8_info((char *)edhoc_state.ad.ad_2, edhoc_state.ad.ad_2_sz);
-      }
-      LOG_DBG("gen MSG3\n");
-      /*Generate MSG3 */
-  
-      edhoc_gen_msg_3(ctx, (uint8_t *)edhoc_state.ad.ad_3, edhoc_state.ad.ad_3_sz);
-      LOG_INFO("MSG3 (%d)\n", ctx->tx_sz);
-      print_buff_8_dbg(ctx->msg_tx, ctx->tx_sz);
-      cli->rx_msg2 = true;
-      LOG_DBG("POST MSG3\n");
-      edhoc_state.val = CL_POST;
-      pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
-      cli->state = RX_RESPONSE_MSG3;
-      cli->tx_msg3 = true;
-    }
-    break;
-  case RX_RESPONSE_MSG3:
-    LOG_DBG("RX_RESPONSE_MSG3\n");
-
-    if(response->payload_len > 0) {
-      uint8_t *msg_err = response->payload;
-      edhoc_msg_error err;
-      er = edhoc_deserialize_err(&err, msg_err, response->payload_len);
-      if(er > 0) {
-        LOG_ERR("RX MSG_ERR:");
-        print_char_8_err(err.err.buf, err.err.len);
-        edhoc_state.val = CL_RESTART;
-        coap_timer_stop(&timer);
-        pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
-        break;
-      }
-    }
-    /*Check every protocol step successfully */
-    cli->state = EXP_READY;
-    if(cli->tx_msg1 && cli->rx_msg2) {
-      cli->rx_msg3_response = true;
-    } else {
-      LOG_ERR("The edhoc process scape steps\n");
-      edhoc_state.val = CL_RESTART;
-      coap_timer_stop(&timer);
-      pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
-      break;
-    }
-  case EXP_READY:
-    LOG_DBG("EXPORTER\n");
-    edhoc_state.val = CL_FINISHED;
-    coap_timer_stop(&timer);
-    pro = process_post(PROCESS_BROADCAST, edhoc_event, &edhoc_state);
-    break;
-  }
-}
 static int
 client_block2_handler(coap_message_t *response,
                       uint8_t *target, size_t *len, size_t max_len)
@@ -248,8 +190,14 @@ client_response_handler(coap_callback_request_state_t *callback_state)
     LOG_DBG("Request timed out response\n");
     return;
   }
-
-  /*Check that the response are comming from the correct server*/
+  if(memcmp(callback_state->state.request->token,callback_state->state.response->token, callback_state->state.request->token_len)){
+    LOG_ERR("rx response not correlated\n");
+    edhoc_state.val = CL_RESTART;
+    coap_timer_stop(&timer);
+    pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
+    return;
+  } 
+  //Check that the response are comming from the correct server
   if(memcmp(&cli->server_ep.ipaddr, &callback_state->state.remote_endpoint->ipaddr, sizeof(uip_ipaddr_t)) != 0) {
     LOG_ERR("rx response from an error server\n");
     edhoc_state.val = CL_RESTART;
@@ -261,7 +209,7 @@ client_response_handler(coap_callback_request_state_t *callback_state)
   LOG_DBG("Response handler (%d) \n", callback_state->state.response->code);
   LOG_DBG("Payload (%d):", callback_state->state.response->payload_len);
   print_buff_8_dbg(callback_state->state.response->payload, callback_state->state.response->payload_len);
-  if(callback_state->state.response->code != CHANGED_2_04) {
+  if((callback_state->state.response->code != CHANGED_2_04)) {
     LOG_ERR("Received an error code response\n");
     edhoc_state.val = CL_RESTART;
     coap_timer_stop(&timer);
@@ -269,9 +217,7 @@ client_response_handler(coap_callback_request_state_t *callback_state)
     return;
   }
 
-  coap_init_message(callback_state->state.request, COAP_TYPE_CON, COAP_POST, 0);
-  coap_set_header_uri_path(callback_state->state.request, WELL_KNOWN);
-
+  coap_set_option(callback_state->state.response, COAP_OPTION_BLOCK2);
   LOG_DBG("Payload response handeler: ");
   print_buff_8_dbg(callback_state->state.response->payload, callback_state->state.response->payload_len);
   LOG_DBG("Blockwise: block 2 response: Num: %" PRIu32
@@ -289,15 +235,15 @@ client_response_handler(coap_callback_request_state_t *callback_state)
   if(callback_state->state.more) {
     LOG_DBG("Request next block 2!\n");
     client_block2_handler(callback_state->state.response, rx_ptr, &rx_sz, MAX_DATA_LEN);
-    callback_state->state.request->payload = NULL;
-    callback_state->state.request->payload_len = 0;
+   
   } else {
     client_block2_handler(callback_state->state.response, rx_ptr, &rx_sz, MAX_DATA_LEN);
     LOG_DBG("Received last block 2!\n");
     ctx->rx_sz = (uint8_t)rx_sz;
     LOG_DBG("RX MSG (%d): \n", ctx->rx_sz);
     print_buff_8_dbg(ctx->msg_rx, ctx->rx_sz);
-    client_protocol(callback_state->state.response);
+    edhoc_state.val = CL_BLOCKING;
+    pro = process_post(PROCESS_BROADCAST, edhoc_event, &edhoc_state);
   }
 }
 static void
@@ -326,39 +272,176 @@ client_chunk_handler(coap_callback_request_state_t *callback_state)
   edhoc_state.val = CL_BLOCK1;
   pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
 }
-static void
-edhoc_client_post_blocks()
-{
-  LOG_DBG("edhoc post request(%d) %d - %d\n", ctx->tx_sz - send_sz, ctx->tx_sz, send_sz);
-  if((ctx->tx_sz - send_sz) > COAP_MAX_CHUNK_SIZE) {
-    LOG_DBG("more blocks ..\n");
-    coap_set_payload(cli->request, (uint8_t *)ctx->msg_tx + send_sz, COAP_MAX_CHUNK_SIZE);
-    coap_set_header_block1(cli->request, msg_num, 1, COAP_MAX_CHUNK_SIZE);
-    msg_num++;
-    send_sz += COAP_MAX_CHUNK_SIZE;
-    LOG_DBG("msg num (%d) - send_sz (%d)", msg_num, send_sz);
-    coap_send_request(&state, state.state.remote_endpoint, cli->request, client_chunk_handler);
-  } else {
-    LOG_DBG("last block!\n");
-    coap_set_payload(cli->request, (uint8_t *)ctx->msg_tx + send_sz, ctx->tx_sz - send_sz);
-    coap_set_header_block1(cli->request, msg_num, 0, COAP_MAX_CHUNK_SIZE);
-    send_sz += (ctx->tx_sz - send_sz);
-    rx_ptr = ctx->msg_rx;
-    rx_sz = 0;
-    coap_send_request(&state, state.state.remote_endpoint, cli->request, client_response_handler);
-  }
-}
+
 static void
 edhoc_client_post()
 {
-  coap_init_message(cli->request, COAP_TYPE_CON, COAP_POST, 0);
-  coap_set_header_uri_path(cli->request, WELL_KNOWN);
+  coap_init_message(state.state.request, COAP_TYPE_CON, COAP_POST, 0);
+  coap_set_header_uri_path(state.state.request, WELL_KNOWN);
   LOG_DBG("--POST (%" PRIu8 "):", ctx->tx_sz);
   print_buff_8_dbg(ctx->msg_tx, ctx->tx_sz);
   send_sz = 0;
   msg_num = 0;
   state.state.block_num = 0;
 }
+
+static int
+edhoc_client_post_blocks()
+{
+  LOG_DBG("edhoc post request(%d) %d - %d\n", ctx->tx_sz - send_sz, ctx->tx_sz, send_sz);
+  if((ctx->tx_sz - send_sz) > COAP_MAX_CHUNK_SIZE) {
+    LOG_DBG("more blocks ..\n");
+    coap_set_payload(state.state.request, (uint8_t *)ctx->msg_tx + send_sz, COAP_MAX_CHUNK_SIZE);
+    coap_set_header_block1(state.state.request, msg_num, 1, COAP_MAX_CHUNK_SIZE);
+    msg_num++;
+    send_sz += COAP_MAX_CHUNK_SIZE;
+    LOG_DBG("msg num (%d) - send_sz (%d)", msg_num, send_sz);
+    coap_send_request(&state, state.state.remote_endpoint, state.state.request, client_chunk_handler);
+    return 0;
+  } 
+  else if (ctx->tx_sz < COAP_MAX_CHUNK_SIZE)
+  {
+    LOG_DBG("Short message\n");     
+    coap_set_payload(state.state.request, (uint8_t *)ctx->msg_tx, ctx->tx_sz);
+    rx_ptr = ctx->msg_rx;
+    rx_sz = 0;
+ 
+    LOG_DBG("%ld - %ld\n",state.state.block_num,cli->request->block2_num);
+    state.state.block_num = 0;
+    coap_send_request(&state, state.state.remote_endpoint, state.state.request, client_response_handler);
+ 
+    return 1;
+  }
+  else{
+    LOG_DBG("last block!\n");
+      
+    coap_set_payload(state.state.request, (uint8_t *)ctx->msg_tx + send_sz, ctx->tx_sz - send_sz);
+    coap_set_header_block1(state.state.request, msg_num, 0, COAP_MAX_CHUNK_SIZE);
+    send_sz += (ctx->tx_sz - send_sz);
+    rx_ptr = ctx->msg_rx;
+    rx_sz = 0;
+    coap_send_request(&state, state.state.remote_endpoint, state.state.request, client_response_handler);
+   
+    return 1;
+  }
+}
+
+PROCESS_THREAD(edhoc_client_protocol, ev, data)
+{
+  PROCESS_BEGIN();
+  switch(cli->state) {
+  case RX_MSG2:
+    LOG_INFO("--------------Handler message_2------------------\n");
+    LOG_INFO("RX message_2 (%d bytes):", ctx->rx_sz);
+    print_buff_8_info(ctx->msg_rx, ctx->rx_sz);
+
+   // time = RTIMER_NOW();
+   
+    er = edhoc_handler_msg_2(&msg2,ctx, ctx->msg_rx, ctx->rx_sz);
+   /* time = RTIMER_NOW() - time;
+    LOG_INFO("Client time to handler MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+    time = RTIMER_NOW();*/
+
+    if(er > 0){
+      er = edhoc_get_auth_key(ctx,&pt,&key);
+      /*LOG_DBG("Key identity:");
+      print_char_8_dbg(key.identity,key.identity_sz); 
+      LOG_DBG("x:");
+      print_buff_8_dbg(key.x,ECC_KEY_BYTE_LENGHT);
+      LOG_DBG("y:");
+      print_buff_8_dbg(key.y,ECC_KEY_BYTE_LENGHT);*/
+    }
+
+    if(er > 0){
+      /*LOG_DBG("Authenticate key x:");
+      print_buff_8_dbg(key.x,ECC_KEY_BYTE_LENGHT);
+      LOG_DBG("Authneticate key y:");
+      print_buff_8_dbg(key.y,ECC_KEY_BYTE_LENGHT);
+      LOG_DBG("key id sz: (%d)\n",key.kid_sz);*/
+      
+      er = edhoc_authenticate_msg(ctx, &pt, msg2.cipher.len,(uint8_t *)edhoc_state.ad.ad_2,&key);
+    }
+    /*time = RTIMER_NOW() - time;
+    LOG_INFO("Client time to authneticate MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+    time = RTIMER_NOW();*/
+
+    if(er == RX_ERR_MSG) {
+      LOG_ERR("error code (%d)\n", er);
+   
+    } else if(er < RX_ERR_MSG) {
+      LOG_ERR("Client: Send MSG error with code (%d)\n", er);
+      ctx->tx_sz = edhoc_gen_msg_error(ctx->msg_tx, ctx, er);
+      cli->state = NON_MSG;
+      edhoc_client_post();
+      LOG_DBG("client post\n");
+      edhoc_client_post_blocks();
+    } else {
+      //TODO: Include a way to pass aplictaion msgs. 
+      edhoc_state.ad.ad_2_sz = er;
+      if(edhoc_state.ad.ad_2_sz > 0 && edhoc_state.ad.ad_2) {
+        LOG_INFO("Ap_2 (%d bytes):", edhoc_state.ad.ad_2_sz);
+        print_char_8_info((char *)edhoc_state.ad.ad_2, edhoc_state.ad.ad_2_sz);
+      }
+      LOG_INFO("-----------------gen MSG3---------------------\n");
+      //Generate MSG3 
+      //time = RTIMER_NOW();
+      edhoc_gen_msg_3(ctx, (uint8_t *)edhoc_state.ad.ad_3, edhoc_state.ad.ad_3_sz);
+      //time = RTIMER_NOW() - time;
+      //LOG_INFO("Client time to gen MSG3: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+      LOG_INFO("message_3 (%d bytes):", ctx->tx_sz);
+      print_buff_8_info(ctx->msg_tx, ctx->tx_sz);
+      cli->rx_msg2 = true;
+      LOG_DBG("POST MSG3\n");
+      cli->state = RX_RESPONSE_MSG3;
+      cli->tx_msg3 = true;
+      edhoc_client_post();
+      LOG_DBG("client post\n");
+      
+      if(edhoc_client_post_blocks()){}
+    }
+    LOG_DBG("Before break\n");
+    break;
+  case RX_RESPONSE_MSG3:
+    LOG_DBG("RX_RESPONSE_MSG3\n");
+     
+    if(ctx->rx_sz > 0){    
+      LOG_DBG("Payload > 0\n");
+      uint8_t *msg_err = ctx->msg_rx;
+    
+      edhoc_msg_error err;
+      er = edhoc_deserialize_err(&err, msg_err, ctx->rx_sz);
+      if(er > 0) {
+        LOG_ERR("RX MSG_ERR:");
+        print_char_8_err(err.err.buf, err.err.len);
+        edhoc_state.val = CL_RESTART;
+        cli->state = NON_MSG;
+        coap_timer_stop(&timer);
+        pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
+        break;
+      }
+    }
+    //Check every protocol step successfully 
+    cli->state = EXP_READY;
+    if(cli->tx_msg1 && cli->rx_msg2) {
+      cli->rx_msg3_response = true;
+    } else {
+      LOG_ERR("The edhoc process scape steps\n");
+      edhoc_state.val = CL_RESTART;
+      coap_timer_stop(&timer);
+      pro = process_post(&edhoc_client, edhoc_event, &edhoc_state);
+      break;
+    }
+  case EXP_READY:
+    LOG_INFO("-------------------EXPORTER-----------------------\n");
+    edhoc_state.val = CL_FINISHED;
+    coap_timer_stop(&timer);
+    pro = process_post(PROCESS_BROADCAST, edhoc_event, &edhoc_state);
+    break;
+  }
+  LOG_DBG("Before end\n");
+  PROCESS_END();
+}
+
 static void
 edhoc_client_init()
 {
@@ -370,7 +453,7 @@ edhoc_client_init()
   state.state.response = cli->response;
   state.state.remote_endpoint = &cli->server_ep;
 }
-static void
+static int
 edhoc_client_start(uint8_t *ad, uint8_t ad_sz)
 {
   cli->tx_msg3 = false;
@@ -380,13 +463,17 @@ edhoc_client_start(uint8_t *ad, uint8_t ad_sz)
   coap_timer_set_callback(&timer, client_timeout_callback);
   coap_timer_set(&timer, CL_TIMEOUT_VAL);
 
-  LOG_DBG("Client Start\n");
+  LOG_INFO("--------------Generate message_1------------------\n");
+ // time = RTIMER_NOW();
   edhoc_gen_msg_1(ctx, ad, ad_sz);
-  LOG_INFO("MSG1 (%d)\n", ctx->tx_sz);
+ /* time = RTIMER_NOW() - time;
+  LOG_INFO("Client time to gen MSG1: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+  LOG_DBG("MSG1 (%d)\n", ctx->tx_sz);
   print_buff_8_dbg(ctx->msg_tx, ctx->tx_sz);
-  edhoc_client_post(&cli->server_ep, cli->request, ctx->msg_tx, ctx->tx_sz);
+  time = RTIMER_NOW();*/
+  edhoc_client_post(&cli->server_ep, state.state.request, ctx->msg_tx, ctx->tx_sz);
   cli->state = RX_MSG2;
-  edhoc_client_post_blocks();
+  return edhoc_client_post_blocks();
 }
 void
 edhoc_client_close()
@@ -401,18 +488,59 @@ PROCESS_THREAD(edhoc_client, ev, data)
   PROCESS_BEGIN();
   static struct etimer wait_timer;
 
-  time = clock_time();
+  
   edhoc_client_init();
-  time = clock_time() - time;
-  LOG_INFO("Client time to init: %" PRIu32 " ms.\n", (uint32_t)time * 256000 / RTIME_MS);
-  LOG_INFO("CLIENT :Initialize static DH for authentication\n");
+  time = RTIMER_NOW();
+  #if TEST == TEST_VECTOR
+  LOG_INFO("Using test vector\n");
+  memcpy(ctx->ephimeral_key.public.x,eph_pub_x_i,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.public.y,eph_pub_y_i,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.private_key,eph_private_i,ECC_KEY_BYTE_LENGHT);
+  #if ECC == UECC
+  LOG_INFO("setr curve of uecc\n");
+  ctx->curve.curve = uECC_secp256r1();
+  #endif
+  #elif ECC == UECC
+  LOG_INFO("generate key with uecc\n");
+  ctx->curve.curve = uECC_secp256r1();
+  uecc_generate_key(&ctx->ephimeral_key, ctx->curve);
+  //#endif
+
+  #elif ECC == CC2538
+  LOG_INFO("generate key with CC2538\n");
+  static key_gen_t key = {
+    .process    = &edhoc_client,
+    .curve_info = &nist_p_256,
+  };
+  PT_SPAWN(&edhoc_client.pt, &key.pt, generate_key_hw(&key));
+
+  memcpy(ctx->ephimeral_key.public.x,key.x,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.public.y,key.y,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.private_key,key.private,ECC_KEY_BYTE_LENGHT);
+  #endif
+
+  LOG_DBG("\n");
+  LOG_INFO("X (%d bytes):", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->ephimeral_key.private_key, ECC_KEY_BYTE_LENGHT);
+  LOG_INFO("G_X (%d bytes):", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT);
+  LOG_DBG("y:");
+  print_buff_8_dbg(ctx->ephimeral_key.public.y, ECC_KEY_BYTE_LENGHT);
+  
+  /*time_total = RTIMER_NOW();
+  time = RTIMER_NOW() - time;
+  LOG_INFO("Client time to gen eph key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+  LOG_DBG("CLIENT :Initialize static DH for authentication\n");*/
   edhoc_get_authentication_key(ctx);
-  time = clock_time();
+  LOG_DBG("pub authentication:");
+  print_buff_8_dbg(ctx->authen_key.public.x,ECC_KEY_BYTE_LENGHT);
+  time = RTIMER_NOW();
   edhoc_client_start((uint8_t *)edhoc_state.ad.ad_1, edhoc_state.ad.ad_1_sz);
 
   while(1) {
     PROCESS_WAIT_EVENT();
     LOG_DBG("Event collected at the EDHOC client Process\n");
+    
     if((ev == edhoc_event) && (data == &edhoc_state)) {
       LOG_DBG("Event post\n");
       if(edhoc_state.val == CL_RESTART) {
@@ -423,9 +551,11 @@ PROCESS_THREAD(edhoc_client, ev, data)
           etimer_set(&wait_timer, CLOCK_SECOND * (CL_TIMEOUT_VAL / 1000));
           PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&wait_timer));
           etimer_stop(&wait_timer);
+          time = RTIMER_NOW();
           edhoc_client_start((uint8_t *)edhoc_state.ad.ad_1, edhoc_state.ad.ad_1_sz);
           attempt++;
-        } else {
+        } 
+        else {
           LOG_ERR("Expire edhoc client attempts\n");
           edhoc_state.val = CL_TRIES_EXPIRE;
           pro = process_post(PROCESS_BROADCAST, edhoc_event, &edhoc_state);
@@ -433,8 +563,8 @@ PROCESS_THREAD(edhoc_client, ev, data)
         }
       }
       if(edhoc_state.val == CL_FINISHED) {
-        time = clock_time() - time;
-        LOG_INFO("Client time to finsh the edhoc protocol: %" PRIu32 " ms.\n", (uint32_t)time * 256000 / RTIME_MS);
+        time_total = RTIMER_NOW() - time_total;
+        LOG_INFO("Client time to finsh: %" PRIu32 " ms (%" PRIu32 " CPU cycles).\n", (uint32_t)((uint64_t)time_total * 1000 / RTIMER_SECOND),(uint32_t)time_total);
         break;
       }
       if(edhoc_state.val == CL_TIMEOUT) {
@@ -460,12 +590,23 @@ PROCESS_THREAD(edhoc_client, ev, data)
       if(edhoc_state.val == CL_POST) {
         LOG_DBG("Request with MSG3 or err msgs\n");
         edhoc_client_post();
+        LOG_DBG("client post\n");
         edhoc_client_post_blocks();
+      }
+      if(edhoc_state.val == CL_BLOCKING) {
+        LOG_DBG("Blocking again\n");
+        process_start(&edhoc_client_protocol,NULL);
+        LOG_DBG("process finished\n");
+       // time = RTIMER_NOW() - time;
+       // LOG_INFO("Client time to rx MSG: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
+       // time = RTIMER_NOW();
+        while(process_is_running(&edhoc_client_protocol)){
+          LOG_DBG("pull\n");
+          process_run();
+        }
       }
     }
   }
-
-
   PROCESS_EXIT();
   PROCESS_END();
 }

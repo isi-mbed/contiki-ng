@@ -41,6 +41,9 @@
 #include "contiki-lib.h"
 #include "edhoc-exporter.h"
 #include "edhoc-server-API.h"
+#include "sys/rtimer.h"
+
+rtimer_clock_t t;
 
 oscore_ctx_t osc;
 
@@ -54,49 +57,149 @@ PROCESS_THREAD(edhoc_example_server, ev, data)
   PROCESS_NAME(webserver_nogui_process);
   process_start(&webserver_nogui_process, NULL);
 #endif /* BORDER_ROUTER_CONF_WEBSERVER */
+
+
+#if TEST == TEST_VECTOR
+/*  uint8_t eph_private_r[ECC_KEY_BYTE_LENGHT] = {0xc6,0x46,0xcd,0xdc,0x58,0x12,0x6e,0x18,0x10,0x5f,0x01,0xce,0x35,0x05,0x6e,0x5e,0xbc,0x35,0xf4,0xd4,0xcc,0x51,0x07,0x49
+,0xa3,0xa5,0xe0,0x69,0xc1,0x16,0x16,0x9a};*/
+/*uint8_t eph_pub_gy_r[ECC_KEY_BYTE_LENGHT] = {0x52,0xfb,0xa0,0xbd,0xc8,0xd9,0x53,0xdd,0x86,0xce,0x1a,0xb2,0xfd,0x7c,0x05,0xa4,0x65,0x8c,0x7c,0x30,0xaf,0xdb,0xfc,0x33
+,0x01,0x04,0x70,0x69,0x45,0x1b,0xaf,0x35};*/
+
+uint8_t eph_pub_x_r[ECC_KEY_BYTE_LENGHT] = {0x81,0xdf,0x54,0xb3,0x75,0x6a,0xcf,0xc8,0xa1,0xe9,0xb0,0x8b,0xa1,0x0d,0xe4,0xe7,0xe7,0xdd,0x93,0x45,0x87,0xa1,0xec,0xdb
+,0x21,0xb9,0x2f,0x8f,0x22,0xc3,0xa3,0x8d}; 
+uint8_t eph_pub_y_r[ECC_KEY_BYTE_LENGHT] = {0xd6,0xd5,0xb9,0xf3,0x10,0x8a,0x90,0xec,0x5a,0x13,0x19,0x6f,0x2b,0x64,0x9b,0x95,0xe6,0x53,0x6f,0x9a,0x89,0x8f,0x6a,0xeb
+,0xb8,0xd3,0xca,0xdd,0x85,0x3c,0xe5,0x24}; 
+uint8_t eph_private_r[ECC_KEY_BYTE_LENGHT] = {0x73,0x97,0xba,0x34,0xa7,0xb6,0x0a,0x4d,0x98,0xef,0x5e,0x91,0x56,0x3f,0xc8,0x54,0x9f,0x35,0x54,0x49,0x4f,0x1f,0xeb,0xd4
+,0x65,0x36,0x0c,0x4b,0x90,0xe7,0x41,0x71}; 
+#endif
+
   /*Set the other part authetication key and add in the storage */
-  cose_key_t auth_client = { NULL, { 12 }, 1,
-                             { "Node_101" }, strlen("Node_101"),
+  cose_key_t auth_client = { NULL, { 0x24 }, 1,
+                             //{ "Node_101" }, strlen("Node_101"),
+                             { "" }, 0,
                              KEY_TYPE, KEY_CRV,
-                             { 0x03, 0xcd, 0x41, 0x77, 0xba, 0x62, 0x43, 0x33, 0x75, 0xed, 0xe2, 0x79, 0xb5, 0xe1, 0x8e, 0x8b, 0x91, 0xbc, 0x3e, 0xd8, 0xf1, 0xe1, 0x74, 0x47, 0x4a, 0x26, 0xfc, 0x0e, 0xdb, 0x44, 0xea, 0x53, 0x73 },
+                             { 0xcd, 0x41, 0x77, 0xba, 0x62, 0x43, 0x33, 0x75, 0xed, 0xe2, 0x79, 0xb5, 0xe1, 0x8e, 0x8b, 0x91, 0xbc, 0x3e, 0xd8, 0xf1, 0xe1, 0x74, 0x47, 0x4a, 0x26, 0xfc, 0x0e, 0xdb, 0x44, 0xea, 0x53, 0x73 },
                              { 0xa0, 0x39, 0x1d, 0xe2, 0x9c, 0x5c, 0x5b, 0xad, 0xda, 0x61, 0x0d, 0x4e, 0x30, 0x1e, 0xaa, 0xa1, 0x84, 0x22, 0x36, 0x77, 0x22, 0x28, 0x9c, 0xd1, 0x8c, 0xbe, 0x66, 0x24, 0xe8, 0x9b, 0x9c, 0xfd } };
 
   /*Set the server authentication key and add in the ctx */
-  cose_key_t auth_server = { NULL, { 14 }, 1,
-                             { AUTH_KEY_IDENTITY }, strlen(AUTH_KEY_IDENTITY),
+  cose_key_t auth_server = { NULL, { 0x07 }, 1,
+                            { "" }, 0,
+                             //{ AUTH_KEY_IDENTITY }, strlen(AUTH_KEY_IDENTITY),
                              KEY_TYPE, KEY_CRV,
-                             { 0x02, 0x6f, 0x97, 0x02, 0xa6, 0x66, 0x02, 0xd7, 0x8f, 0x5e, 0x81, 0xba, 0xc1, 0xe0, 0xaf, 0x01, 0xf8, 0xb5, 0x28, 0x10, 0xc5, 0x02, 0xe8, 0x7e, 0xbb, 0x7c, 0x92, 0x6c, 0x07, 0x42, 0x6f, 0xd0, 0x2f },
+                             { 0x6f, 0x97, 0x02, 0xa6, 0x66, 0x02, 0xd7, 0x8f, 0x5e, 0x81, 0xba, 0xc1, 0xe0, 0xaf, 0x01, 0xf8, 0xb5, 0x28, 0x10, 0xc5, 0x02, 0xe8, 0x7e, 0xbb, 0x7c, 0x92, 0x6c, 0x07, 0x42, 0x6f, 0xd0, 0x2f },
                              { 0xc8, 0xd3, 0x32, 0x74, 0xc7, 0x1c, 0x9b, 0x3e, 0xe5, 0x7d, 0x84, 0x2b, 0xbf, 0x22, 0x38, 0xb8, 0x28, 0x3c, 0xb4, 0x10, 0xec, 0xa2, 0x16, 0xfb, 0x72, 0xa7, 0x8e, 0xa7, 0xa8, 0x70, 0xf8, 0x00 },
                              { 0xec, 0x93, 0xc2, 0xf8, 0xa5, 0x8f, 0x12, 0x3d, 0xaa, 0x98, 0x26, 0x88, 0xe3, 0x84, 0xf5, 0x4c, 0x10, 0xc5, 0x0a, 0x1d, 0x2c, 0x90, 0xc0, 0x03, 0x04, 0xf6, 0x48, 0xe5, 0x8f, 0x14, 0x35, 0x4c }, };
 
   edhoc_add_key(&auth_client);
   edhoc_add_key(&auth_server);
 
-  edhoc_server_set_ad_2("MSG2!",strlen("MSG2!"));
+  //edhoc_server_set_ad_2("MSG2!",strlen("MSG2!"));
 
   edhoc_server_init();
   edhoc_server_start();
+
+  t = RTIMER_NOW();
+#if TEST == TEST_VECTOR
+  LOG_INFO("Using test vector\n");
+  memcpy(ctx->ephimeral_key.public.x,eph_pub_x_r,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.public.y,eph_pub_y_r,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.private_key,eph_private_r,ECC_KEY_BYTE_LENGHT);
+  #if ECC == UECC
+  LOG_INFO("setr curve of uecc\n");
+  ctx->curve.curve = uECC_secp256r1();
+  #endif
+#elif ECC == UECC
+  LOG_INFO("generate key with uecc\n");
+  ctx->curve.curve = uECC_secp256r1();
+  uecc_generate_key(&ctx->ephimeral_key, ctx->curve);
+  //LOG_DBG("key generated\n");
+//#endif
+#elif ECC == CC2538
+  LOG_INFO("generate key with CC2538 hw modules\n");
+  static key_gen_t key = {
+    .process    = &edhoc_example_server,
+    .curve_info = &nist_p_256,
+  };
+  PT_SPAWN(&edhoc_example_server.pt, &key.pt, generate_key_hw(&key));
+  
+  print_buff_8_dbg(key.x, ECC_KEY_BYTE_LENGHT);
+  print_buff_8_dbg(key.y, ECC_KEY_BYTE_LENGHT);
+  print_buff_8_dbg(key.private, ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.public.x,key.x,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.public.y,key.y,ECC_KEY_BYTE_LENGHT);
+  memcpy(ctx->ephimeral_key.private_key,key.private,ECC_KEY_BYTE_LENGHT);
+
+  #endif  
+  //t = RTIMER_NOW() - t;
+  //LOG_INFO("Server time to generate new key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n",  (uint32_t)((uint64_t) t  * 1000 / RTIMER_SECOND),(uint32_t)t);
+
+  LOG_INFO("Gy (%d bytes):", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT);
+  LOG_DBG("y:");
+  print_buff_8_dbg(ctx->ephimeral_key.public.y, ECC_KEY_BYTE_LENGHT);
+  LOG_INFO("Y (%d bytes):", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->ephimeral_key.private_key, ECC_KEY_BYTE_LENGHT);
   while(1) {
     PROCESS_WAIT_EVENT();
-    if(edhoc_server_callback(ev,&data)){
+    uint8_t res = edhoc_server_callback(ev,&data);
+    if(res == SERV_FINISHED){
       LOG_INFO("New EDHOC client finished export here the security context\n");
-       if(edhoc_exporter_oscore(&osc, ctx) < 0) {
+      t = RTIMER_NOW();
+      if(edhoc_exporter_oscore(&osc, ctx) < 0) {
           LOG_ERR("ERROR IN EXPORT CTX\n");
         } else {
+         // t = RTIMER_NOW() - t;
+        //  LOG_INFO("Server time to generate new key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n",  (uint32_t)((uint64_t) t  * 1000 / RTIMER_SECOND),(uint32_t)t);
+
           LOG_DBG("Export OSCORE CTX success\n");
           edhoc_exporter_print_oscore_ctx(&osc);
         }
-      LOG_INFO("And Get your Aplication Data\n");
+      /*LOG_INFO("And Get your Aplication Data\n");
       char ad3[16];
-      uint8_t ad3_sz = edhoc_server_get_ad_1(ad3);
-      LOG_INFO("AD3:");
-      print_char_8_info(ad3,ad3_sz);  
-      LOG_DBG("server ctx close\n");
-      edhoc_server_close();
-      LOG_DBG("server ctx start\n");
-      edhoc_server_start();
+      uint8_t ad3_sz = edhoc_server_get_ad_3(ad3);
+      LOG_INFO("AD_3 (%d bytes):",ad3_sz);
+      print_char_8_info(ad3,ad3_sz); */
+      res = SERV_RESTART;
+    }
+    if (res == SERV_RESTART){
+      edhoc_server_restart();
+      LOG_INFO("restart server\n");
+      t = RTIMER_NOW();
+      #if TEST == TEST_VECTOR
+        LOG_INFO("Using test vector\n");
+        
+      #elif ECC == UECC
+        LOG_INFO("generate key with uecc\n");
+        ctx->curve.curve = uECC_secp256r1();
+        uecc_generate_key(&ctx->ephimeral_key, ctx->curve);
+        //LOG_DBG("key generated\n");
+      //#endif
+      #elif ECC == CC2538
+        LOG_INFO("generate key with CC2538 hw modules\n");
+        static key_gen_t key = {
+          .process    = &edhoc_example_server,
+          .curve_info = &nist_p_256,
+        };
+        PT_SPAWN(&edhoc_example_server.pt, &key.pt, generate_key_hw(&key));
+        
+        print_buff_8_dbg(key.x, ECC_KEY_BYTE_LENGHT);
+        print_buff_8_dbg(key.y, ECC_KEY_BYTE_LENGHT);
+        print_buff_8_dbg(key.private, ECC_KEY_BYTE_LENGHT);
+        memcpy(ctx->ephimeral_key.public.x,key.x,ECC_KEY_BYTE_LENGHT);
+        memcpy(ctx->ephimeral_key.public.y,key.y,ECC_KEY_BYTE_LENGHT);
+        memcpy(ctx->ephimeral_key.private_key,key.private,ECC_KEY_BYTE_LENGHT);
+
+        #endif  
+      t = RTIMER_NOW() - t;
+      //LOG_INFO("Server time to generate new key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n",  (uint32_t)((uint64_t) t  * 1000 / RTIMER_SECOND),(uint32_t)t);
+      //LOG_INFO("\n");
+      LOG_INFO("G_y (%d bytes):", ECC_KEY_BYTE_LENGHT);
+      print_buff_8_info(ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT);
+      //LOG_DBG("y:");
+      //print_buff_8_dbg(ctx->ephimeral_key.public.y, ECC_KEY_BYTE_LENGHT);
+      LOG_INFO("Y (%d bytes):", ECC_KEY_BYTE_LENGHT);
+      print_buff_8_info(ctx->ephimeral_key.private_key, ECC_KEY_BYTE_LENGHT);
     }
   }
-
   PROCESS_END();
 }

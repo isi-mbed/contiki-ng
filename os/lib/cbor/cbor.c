@@ -60,49 +60,6 @@ int cbor_put_nil(uint8_t **buffer){
 	return 1;
 }
 
-int
-cbor_put_text_long(uint8_t **buffer, char *text, uint16_t text_len)
-//cbor_put_text(uint8_t **buffer, char *text, uint8_t text_len)
-{
-  printf("LONG Text (%d)\n", text_len);
-  uint16_t ret = 0;
-
-  if(256 > text_len && text_len > 23) {
-    **buffer = 0x78;
-    (*buffer)++;
-    **buffer = text_len;
-    (*buffer)++;
-    ret += 2;
-  }else if(text_len > 255)
-  {
-    printf("text longer than 256\n");
-    **buffer = 0x79;
-    (*buffer)++;
-    **buffer = text_len & 0xff;
-    (*buffer)++;
-     **buffer = (text_len >> 8) & 0xff;
-    (*buffer)++;
-    ret += 3;
-    printf("ret: %d", ret);
-  } 
-  else {
-    **buffer = (0x60 | text_len);
-    (*buffer)++;
-    ret += 1;
-  }
-
-  memcpy(*buffer, text, text_len);
-  (*buffer) += text_len;
-  ret += text_len;
-  printf("ret: %d", ret);
-  
-  /*for(int i = 0; i < ret; i++)
-  {
-      printf("%c",**(buffer+i));
-  }*/
-  printf("\n");
-  return ret;
-}
 
 int
 cbor_put_text(uint8_t **buffer, char *text, uint8_t text_len)
@@ -139,35 +96,7 @@ cbor_put_array(uint8_t **buffer, uint8_t elements)
   (*buffer)++;
   return 1;
 }
-int
-cbor_put_bytes_long(uint8_t **buffer, uint8_t *bytes, uint16_t bytes_len)
-{
-  uint16_t ret = 0;
-  if(256 > bytes_len && bytes_len > 23) {
-    **buffer = 0x58;
-    (*buffer)++;
-    **buffer = bytes_len;
-    (*buffer)++;
-    ret += 2;
-  } else if( bytes_len > 255){
-    **buffer = 0x59;
-    (*buffer)++;
-    **buffer = bytes_len & 0xff;
-    (*buffer)++;
-     **buffer = (bytes_len >> 8) & 0xff;
-    (*buffer)++;
-    ret += 3;
-  }
-  else{
-    **buffer = (0x40 | bytes_len);
-    (*buffer)++;
-    ret += 1;
-  }
-  memcpy(*buffer, bytes, bytes_len);
-  (*buffer) += bytes_len;
-  ret += bytes_len;
-  return ret;
-}
+
 
 int
 cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, uint8_t bytes_len)
@@ -180,6 +109,7 @@ cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, uint8_t bytes_len)
     (*buffer)++;
     ret += 2;
   } else {
+
     **buffer = (0x40 | bytes_len);
     (*buffer)++;
     ret += 1;
@@ -195,33 +125,6 @@ cbor_put_num(uint8_t **buffer, uint8_t value)
   (**buffer) = (value);
   (*buffer)++;
   return 1;
-}
-//Include it: 
-int 
-cbor_put_bytes_identifier(uint8_t **buffer, uint8_t *bytes)
-{
-  uint8_t bstr[2];
-  uint8_t *p_bstr = bstr;
-  uint8_t ret = 0;
-  uint8_t num = 0;
-  size_t size = cbor_put_bytes(&p_bstr, bytes,1);
- // printf("size: %d\n",size);
-  if (size == 1)
-    num = bstr[0] - 24;
-  else
-    num = bstr[1] - 24;
- // printf("num: %d", num);
-  
-  if (num < 0)
-  {
-    num = num *(-1);
-    ret = cbor_put_num(buffer,num);
-  }
-  else
-  {
-    ret = cbor_put_num(buffer,num);;
-  } 
-  return ret;
 }
 
 int
@@ -260,5 +163,31 @@ cbor_put_negative(uint8_t **buffer, int64_t value)
   int nb = cbor_put_unsigned(buffer, value);
   *pt = (*pt | 0x20);
   return nb;
+}
+//Include it: 
+int 
+cbor_put_bytes_identifier(uint8_t **buffer, uint8_t *bytes, uint8_t len)
+{
+  int64_t num = 0;
+  int8_t ret = 0;
+  if(len == 1){
+
+    if(bytes[0] <= 0x2f){
+      num = bytes[0] - 24;
+      if(num > 0){
+
+        ret = cbor_put_unsigned(buffer,num);
+      }
+      else{
+  
+        ret = cbor_put_negative(buffer,num*(-1));
+      }
+    }
+  }
+  else{
+
+    ret = cbor_put_bytes(buffer,bytes,len);  
+  }
+  return ret;
 }
 

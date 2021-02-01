@@ -106,6 +106,7 @@
 /* Credential  Types*/
 #define PRKI 1
 #define PRK_ID 2
+#define PRKI_2 3
 
 /**
  * \brief Set the authentication credential type
@@ -173,7 +174,7 @@
 #endif
 
 /*Define type connection*/
-#define TYPE_CON ((4 * METHOD) + CORR)
+//#define TYPE_CON ((4 * METHOD) + CORR)
 
 /**
  * \brief Set the number of attempts to connect with the EDHOC server successfully 
@@ -183,3 +184,4 @@
 #endif 
 #endif /* _EDHOC_CONFIG_H_ */
 /** @} */
+

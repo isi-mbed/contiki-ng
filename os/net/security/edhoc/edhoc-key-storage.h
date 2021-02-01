@@ -52,6 +52,8 @@
 #define ECC_KEY_BYTE_LENGHT 32
 #endif
 
+
+
 /* COSE KEY struct */
 typedef struct cose_key_t {
   struct  key *next;
@@ -61,7 +63,7 @@ typedef struct cose_key_t {
   uint8_t identity_sz;
   uint8_t kty;
   uint8_t crv;
-  uint8_t x[ECC_KEY_BYTE_LENGHT + 1];
+  uint8_t x[ECC_KEY_BYTE_LENGHT];
   uint8_t y[ECC_KEY_BYTE_LENGHT];
   uint8_t private[ECC_KEY_BYTE_LENGHT];
 }cose_key_t;

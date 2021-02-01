@@ -71,6 +71,9 @@
 #define MAX_PAYLOAD 64
 #endif
 
+#ifndef EDHOC_CID 
+#define EDHOC_CID 0
+#endif
 /**
  * \brief MAC length
  */
@@ -92,6 +95,7 @@ typedef struct edhoc_session {
   bstr th;
   bstr ciphertex_2;
   bstr ciphertex_3;
+  
 } edhoc_session;
 
 /**
@@ -207,6 +211,41 @@ void edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz);
 uint8_t edhoc_gen_msg_error(uint8_t *msg_er, edhoc_context_t *ctx, int8_t err);
 
 /**
+ * \brief Get the authnetication key from the rx msg
+ * \param ctx EDHOC Context struct
+ * \param pt A pointer to the ID_CRED_X on the Rx msg buffer.
+ * \param key A pointer to a cose key struct
+ * \retval ERR_CODE when an EDHOC ERROR is detected return a negative number correspondig to the specific error code
+ * \retval 1 when EDHOC get success the authentication key 
+ * 
+ * Used by Initiator and Responder EDHOC part to get the authentication key from the received msg.
+ * 
+ * If any verification step fails to return an EDHOC ERROR code and, if all the steps success return 1.
+ */
+int edhoc_get_auth_key(edhoc_context_t *ctx ,uint8_t **pt,cose_key_t *key);
+
+/**
+ * \brief Authneticate the rx message
+ * \param ctx EDHOC Context struct
+ * \param pt A pointer to the SIGN on the Rx msg buffer.
+ * \param cipher_len Lenght of the cipher msg
+ * \param ad A pointer to a buffer to copy the Application Data received in Message 2 
+ * \retval ERR_CODE when an EDHOC ERROR is detected return a negative number correspondig to the specific error code
+ * \retval ad_sz The length of the Application Data received in Message 2, when EDHOC success 
+ * 
+ * Used by Initiator and Responder EDHOC part to process the Message 2 receive
+ * - Decrypt CIPHERTEXT
+ * - Verify that the EDHOC Responder part identity is among the allower if it is necessary
+ * - Verify MAC
+ * - Pass Application data AD
+ * 
+ * If any verification step fails to return an EDHOC ERROR code and, if all the steps success 
+ * the length of the Application Data receive on the Message is returned.
+ */
+int edhoc_authenticate_msg(edhoc_context_t *ctx ,uint8_t **pt, uint8_t cipher_len, uint8_t *ad, cose_key_t *key);
+
+
+/**
  * \brief Handle the EDHOC Message 1 received 
  * \param ctx EDHOC Context struct
  * \param buffer A pointer to the buffer containing the EDHOC message received
@@ -229,44 +268,32 @@ int edhoc_handler_msg_1(edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz, u
  * \param ctx EDHOC Context struct
  * \param buffer A pointer to the buffer containing the EDHOC message received
  * \param buff_sz Size of the EDHOC message received
- * \param ad A pointer to a buffer to copy the Application Data received in Message 2 
  * \retval ERR_CODE when an EDHOC ERROR is detected return a negative number correspondig to the specific error code
- * \retval ad_sz The length of the Application Data received in Message 2, when EDHOC success 
+ * \retval 1 when EDHOC decode and verify success
  * 
  * Used by Initiator EDHOC part to process the Message 2 receive
  * - Decode the message 2
  * - Verify the other par trough 5-tuple IP address and/or connection identifier C_I
- * - Decrypt CIPHERTEXT_2
- * - Verify that the EDHOC Responder part identity is among the allower if it is necessary
- * - Verify MAC_2
- * - Pass Application data AD_2
  * 
- * If any verification step fails to return an EDHOC ERROR code and, if all the steps success 
- * the length of the Application Data receive on the Message 2 is returned.
+ * If any verification step fails to return an EDHOC ERROR code and, if all the steps success return 1.
  */
-int edhoc_handler_msg_2(edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz, uint8_t *ad);
+int edhoc_handler_msg_2(edhoc_msg_2 * msg2, edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz);
 
 /**
  * \brief Handle the EDHOC Message 3 received 
  * \param ctx EDHOC Context struct
  * \param buffer A pointer to the buffer containing the EDHOC message received
  * \param buff_sz Size of the EDHOC message received
- * \param ad A pointer to a buffer to copy the Application Data received in Message 3 
  * \retval negative number (EDHOC ERROR CODE) when an EDHOC ERROR is detected
- * \retval ad_sz The length of the Application Data received in Message 3, when EDHOC success 
+ * \retval 1 when EDHOC decode and verify success
  * 
  * Used by Responder EDHOC part to process the Message 3 receive
  * - Decode the message 3
  * - Verify the other par trough 5-tuple IP address and/or connection identifier C_R
- * - Decrypt and verify  CIPHERTEXT_3
- * - Verify that the EDHOC Initiator identity is among the allower if it is necessary
- * - Verify MAC_3
- * - Pass Application data AD_3
  * 
- * If any verification step fails to return an EDHOC ERROR code and, if all the steps success 
- * the length of the Application Data receive on the Message 3 is returned.
+ * If any verification step fails to return an EDHOC ERROR code and,if all the steps success return 1.
  */
-int edhoc_handler_msg_3(edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz, uint8_t *ad);
+int edhoc_handler_msg_3(edhoc_msg_3 * msg3,edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz);
 
 /**
  * \brief HMAC-based Expand Key derivation function (RFC 5869) on the EDHOC context 
@@ -294,6 +321,20 @@ int16_t edhoc_kdf(uint8_t *result, uint8_t *key, bstr th, char *label, uint16_t 
  * established at the EDHOC key storage before running the EDHOC protocol.
 */
 uint8_t edhoc_get_authentication_key(edhoc_context_t *ctx);
+
+/**
+ * \brief Handle the EDHOC Message 2 received to get the Gy paramter
+ * \param ctx EDHOC Context struct
+ * \retval ERR_CODE when an EDHOC ERROR is detected return a negative number correspondig to the specific error code
+ * \retval 1 when EDHOC decode and verify success
+ * 
+ * Used by Initiator EDHOC part to process the Message 2 receive
+ * - Decode the message 2
+ * - Get the Gy parameter from the received Message 2
+ * 
+ * If any verification step fails to return an EDHOC ERROR code and, if all the steps success return 1.
+ */
+int edhoc_handler_msg_2_decompress(edhoc_context_t *ctx);
 
 #endif /* _EDHOC_H_ */
 /** @} */
