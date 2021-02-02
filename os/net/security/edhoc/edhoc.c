@@ -38,6 +38,7 @@
 #include "contiki-lib.h"
 #include "edhoc-config.h"
 #include "sys/rtimer.h"
+#include "edhoc-msgs.h"
 
 //static rtimer_clock_t time;
 
@@ -142,7 +143,8 @@ generate_id_cred_x(cose_key *cose, uint8_t *cred) /*TO DO. Not sure of the cred 
     size += cbor_put_bytes(&cred, cose->kid.buf, cose->kid.len);
   }
   if(AUTHENT_TYPE == PRKI_2) {
-    if(cose->crv == 1) {
+    size = generate_cred_x(cose,cred);
+   /* if(cose->crv == 1) {
       size += cbor_put_map(&cred, 4);
     } else {
       size += cbor_put_map(&cred, 3);
@@ -156,7 +158,7 @@ generate_id_cred_x(cose_key *cose, uint8_t *cred) /*TO DO. Not sure of the cred 
     if(cose->crv == 1) {
       size += cbor_put_negative(&cred, 3);
       size += cbor_put_bytes(&cred, cose->y.buf, cose->y.len);
-    }
+    }*/
   }
   return size;
 }
@@ -600,12 +602,14 @@ decrypt_ciphertext_3(edhoc_context_t *ctx, uint8_t *ciphertext, uint16_t ciphert
   /*set external aad in cose */
   cose_encrypt0_set_content(cose, NULL, 0, NULL, 0);
   uint8_t *th3_ptr = cose->external_aad;
-  cose->external_aad_sz = cbor_put_bytes(&th3_ptr, ctx->session.th.buf, ctx->session.th.len);
+  memcpy(th3_ptr,ctx->session.th.buf,ctx->session.th.len);
+  cose->external_aad_sz = ctx->session.th.len;
+  //cose->external_aad_sz = cbor_put_bytes(&th3_ptr, ctx->session.th.buf, ctx->session.th.len);
   cose_encrypt0_set_ciphertext(cose, ciphertext, ciphertext_sz);
   /* COSE encrypt0 set header */
   cose_encrypt0_set_header(cose, NULL, 0, NULL, 0);
   /* generate info for K */
-  uint16_t info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "K_3ea", strlen("K_3ea"), KEY_DATA_LENGHT);
+  uint16_t info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "K_3ae", strlen("K_3ae"), KEY_DATA_LENGHT);
   if(info_sz == 0) {
     LOG_ERR("error in info for decrypt ciphertext 3\n");
     return 0;
@@ -695,7 +699,9 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
   cose_encrypt0 *cose = cose_encrypt0_new();
   /*set external aad in cose */
   uint8_t *th3_ptr = cose->external_aad;
-  cose->external_aad_sz = cbor_put_bytes(&th3_ptr, ctx->session.th.buf, ctx->session.th.len);
+  cose->external_aad_sz = ctx->session.th.len;
+  memcpy(th3_ptr,ctx->session.th.buf,ctx->session.th.len);
+  //cose->external_aad_sz = cbor_put_bytes(&th3_ptr, ctx->session.th.buf, ctx->session.th.len);
 
   /*generate plaintext and set it in cose */
   
@@ -713,7 +719,7 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
   print_buff_8_info(cose->plaintext,cose->plaintext_sz);
 */
   /* generate info for K */
-  uint16_t info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "K_3ea", strlen("K_3ea"), KEY_DATA_LENGHT);
+  uint16_t info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "K_3ae", strlen("K_3ae"), KEY_DATA_LENGHT);
   if(info_sz == 0) {
     LOG_ERR("error in info for encrypt ciphertext 3\n");
     return 0;
@@ -774,24 +780,40 @@ edhoc_get_authentication_key(edhoc_context_t *ctx)
     memcpy(ctx->authen_key.public.y, key->y, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.kid, key->kid, key->kid_sz);
     ctx->authen_key.kid_sz = key->kid_sz;
+    ctx->authen_key.identity = key->identity;
+    ctx->authen_key.identity_size = key->identity_sz;
     LOG_DBG("Authentication key has been set from the storage\n");
     return 1;
+  }
+  else{
+    LOG_ERR("Does not contains a key for the authentication key identity\n");
   }
   #endif
   #ifdef AUTH_KID
   cose_key_t *key;
   uint8_t key_id[1];
   key_id[0] = AUTH_KID;
+  //key_id[1] = AUTH_KID;
+
   if(edhoc_check_key_list_kid(key_id, 1, &key)) {
     memcpy(ctx->authen_key.private_key, key->private, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.public.x, key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.public.y, key->y, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.kid, key->kid, key->kid_sz);
     ctx->authen_key.kid_sz = key->kid_sz;
+    ctx->authen_key.identity = key->identity;
+    ctx->authen_key.identity_size = key->identity_sz;
     LOG_DBG("Authentication key has been set from the storage\n");
+    LOG_DBG("key id on get authen (%d):",ctx->authen_key.kid_sz);
+    print_buff_8_dbg(ctx->authen_key.kid,ctx->authen_key.kid_sz);
+    
+    LOG_DBG("key id on get authen (%d):",key->kid_sz);
+    print_buff_8_dbg(key->kid,key->kid_sz);
     return 1;
   }
-  
+  else{
+    LOG_ERR("Does not contains a key for the key id\n");
+  }
   #endif
   LOG_ERR("Not key for the specific AUTH_KEY_IDENTITY in the storage\n");
   return 0;
@@ -834,12 +856,14 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*generate id_cred_x and cred_x */
   /*The cose key include the authentication key */
   cose_key cose;
+  //cose_key_t *hkey = cose;
   LOG_DBG("PART R (Receiver): cose key of R for Authenticate MSG2 \n");
-  #ifdef AUTH_KEY_IDENTITY
+  /*#ifdef AUTH_KEY_IDENTITY
   generate_cose_key(&ctx->authen_key, &cose, AUTH_KEY_IDENTITY, strlen(AUTH_KEY_IDENTITY));
-  #else
-  generate_cose_key(&ctx->authen_key, &cose, "", 0);
-  #endif
+  #else*/
+  //edhoc_get_cred_x_from_kid(ctx->authen_key.kid, ctx->authen_key.kid_sz, &cose);
+  generate_cose_key(&ctx->authen_key, &cose, ctx->authen_key.identity, ctx->authen_key.identity_size);
+  //#endif
   cose_print_key(&cose);
 
   ctx->session.cred_x.buf = cred_x;
@@ -860,7 +884,8 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   print_buff_8_info(ctx->authen_key.private_key,ECC_KEY_BYTE_LENGHT);
   LOG_INFO("G_R (Responder's public authentication key (%d bytes):", ECC_KEY_BYTE_LENGHT);
   print_buff_8_info(ctx->authen_key.public.x,ECC_KEY_BYTE_LENGHT);
-  
+  LOG_INFO(" (Responder's public authentication key (%d bytes) y component:", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->authen_key.public.y,ECC_KEY_BYTE_LENGHT);
   /*generate prk_3e2m */
   gen_prk_3e2m(ctx, &ctx->authen_key, 1);
   
@@ -929,17 +954,22 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*Generate cose authentication key */
   cose_key cose;
   LOG_DBG("PART I (Initiator): cose key of I for Authenticate MSG3\n");
-  #ifdef AUTH_KEY_IDENTITY
+  /*#ifdef AUTH_KEY_IDENTITY
   generate_cose_key(&ctx->authen_key, &cose, AUTH_KEY_IDENTITY, strlen(AUTH_KEY_IDENTITY));
-  #else
-  generate_cose_key(&ctx->authen_key, &cose, "", 0);
-  #endif
+  #else*/
+  generate_cose_key(&ctx->authen_key, &cose, ctx->authen_key.identity, ctx->authen_key.identity_size);
+ // #endif
 
   cose_print_key(&cose);
-  LOG_INFO("SK_I (Initiaor's private authnetication key) (%d bytes):",ECC_KEY_BYTE_LENGHT);
+  LOG_INFO("SK_I (Initiator's private authnetication key) (%d bytes):",ECC_KEY_BYTE_LENGHT);
   print_buff_8_info(ctx->authen_key.private_key,ECC_KEY_BYTE_LENGHT);
-  LOG_INFO("G_I (Initiaor's public authnetication key) (%d bytes):",ECC_KEY_BYTE_LENGHT);
+  
+  LOG_INFO("G_I (x)(Initiator's public authnetication key) (%d bytes):",ECC_KEY_BYTE_LENGHT);
   print_buff_8_info(ctx->authen_key.public.x,ECC_KEY_BYTE_LENGHT);
+
+  LOG_INFO("(y) (Initiator's public authnetication key) (%d bytes):",ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->authen_key.public.y,ECC_KEY_BYTE_LENGHT);
+
 
   /*generate cred_x */
   ctx->session.cred_x.buf = cred_x;
