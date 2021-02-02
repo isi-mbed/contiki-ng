@@ -531,7 +531,9 @@ PROCESS_THREAD(edhoc_client, ev, data)
   time = RTIMER_NOW() - time;
   LOG_INFO("Client time to gen eph key: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
   LOG_DBG("CLIENT :Initialize static DH for authentication\n");*/
-  edhoc_get_authentication_key(ctx);
+  if(!edhoc_get_authentication_key(ctx)){
+   PROCESS_EXIT();
+  }
   LOG_DBG("pub authentication:");
   print_buff_8_dbg(ctx->authen_key.public.x,ECC_KEY_BYTE_LENGHT);
   time = RTIMER_NOW();

@@ -110,7 +110,7 @@ uecc_generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, 
   uint8_t public[2 * ECC_KEY_BYTE_LENGHT];
   memcpy(public,gx,ECC_KEY_BYTE_LENGHT);
   memcpy(public+ECC_KEY_BYTE_LENGHT,gy,ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(public,2*ECC_KEY_BYTE_LENGHT);
+
   LOG_DBG("generate shared secret\n");
   watchdog_periodic();
   er = uECC_shared_secret(public, private_key, ikm, curve.curve);

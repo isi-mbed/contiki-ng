@@ -557,10 +557,16 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
       break;  
     key_sz = get_bytes(p, &ptr);
     memcpy(key->y, ptr, ECC_KEY_BYTE_LENGHT);
-    LOG_DBG("Y:");
-    //print_buff_8_dbg(ptr, ECC_KEY_BYTE_LENGHT);
-    print_buff_8_dbg(key->y, ECC_KEY_BYTE_LENGHT);
-
+    
+    char* ch =  key->identity;
+    key->identity_sz = get_text(p,&ch);
+    LOG_DBG("text:");
+    print_char_8_dbg(key->identity,key_id_sz);
+    ch =  key->identity;
+    if(memcmp(key->identity,"subject name", strlen("subject name"))){
+      LOG_DBG("key have subject name");
+      key->identity_sz = get_text(p,&ch);
+    }
     LOG_DBG("X:");
    // print_buff_8_dbg(ptr, ECC_KEY_BYTE_LENGHT);
     print_buff_8_dbg(key->x, ECC_KEY_BYTE_LENGHT);

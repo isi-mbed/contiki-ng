@@ -108,7 +108,7 @@ server_timeout_callback(coap_timer_t *timer)
   process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
 }
 
-void
+uint8_t
 edhoc_server_restart()
 {
   serv->con_num = 0;
@@ -116,16 +116,16 @@ edhoc_server_restart()
   serv->rx_msg1 = false;
   serv->rx_msg3 = false;
   serv->state = NON_MSG;
-  edhoc_get_authentication_key(ctx);
+  return edhoc_get_authentication_key(ctx);
 }
-void
+uint8_t
 edhoc_server_start()
 {
   LOG_INFO("SERVER: Edhoc new\n");
   ctx = edhoc_new();
   memset(&server,0,sizeof(edhoc_server_t));
   serv =&server;
-  edhoc_server_restart();
+  return edhoc_server_restart();
 }
 
 

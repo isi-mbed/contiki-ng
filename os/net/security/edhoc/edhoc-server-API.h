@@ -158,7 +158,7 @@ void edhoc_server_init();
  *  Create a new EDHOC context and generate the DH-ephemeral key for the specific session.
  *  A new EDHOC protocol session must be created for each new EDHOC client try
  */
-void edhoc_server_start();
+uint8_t edhoc_server_start();
 /*void
 edhoc_server_start( struct process * proc);*/
 
@@ -170,7 +170,7 @@ edhoc_server_start( struct process * proc);*/
 
 PT_THREAD(edhoc_server_start(edhoc_serv_t *state)); */
 
-void edhoc_server_restart();
+uint8_t edhoc_server_restart();
 /**
  * \brief Check if an EDHOC server session have finished
  * \param ev process event 

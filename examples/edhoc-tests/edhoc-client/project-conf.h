@@ -3,6 +3,8 @@
 
 #define LPM_CONF_MAX_PM 1
 
+
+
 /* Mandatory EDHOC definitions on Client*/
 //#define AUTH_KEY_IDENTITY "Node_101"
 

@@ -4,6 +4,7 @@
 
 #define LPM_CONF_MAX_PM 1
 
+
 /*Server */
 //#define AUTH_KEY_IDENTITY "Serv_A"
 #define AUTH_KID 0x7

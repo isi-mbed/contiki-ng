@@ -55,9 +55,12 @@ typedef struct point_affine {
 } ecc_point_a;
 typedef struct ecc_key {
   uint8_t kid[1];
+  //uint8_t* kid;
   uint8_t kid_sz;
   uint8_t private_key[ECC_KEY_BYTE_LENGHT];
   ecc_point_a public;
+  char * identity;
+  uint8_t identity_size;
 } ecc_key;
 
 typedef struct ecc_curve_t {
