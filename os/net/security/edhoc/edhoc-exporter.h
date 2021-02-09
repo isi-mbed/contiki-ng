@@ -64,8 +64,8 @@
 typedef struct oscore_ctx_t {
   uint8_t master_secret[OSCORE_KEY_SZ];
   uint8_t master_salt[OSCORE_SALT_SZ];
-  uint8_t client_ID;   /* coap client is the Initiator */
-  uint8_t server_ID;   /* coap server is the Responder */
+  int client_ID;   /* coap client is the Initiator */
+  int server_ID;   /* coap server is the Responder */
 }oscore_ctx_t;
 
 /**

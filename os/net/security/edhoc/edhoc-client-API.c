@@ -341,7 +341,6 @@ PROCESS_THREAD(edhoc_client_protocol, ev, data)
    /* time = RTIMER_NOW() - time;
     LOG_INFO("Client time to handler MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
     time = RTIMER_NOW();*/
-
     if(er > 0){
       er = edhoc_get_auth_key(ctx,&pt,&key);
       /*LOG_DBG("Key identity:");

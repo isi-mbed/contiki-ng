@@ -212,12 +212,6 @@ edhoc_serialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer)
   size += cbor_put_unsigned(&buffer, msg->suit_U);
   size += cbor_put_bytes(&buffer, msg->Gx.buf, msg->Gx.len);
   size += cbor_put_bytes_identifier(&buffer,msg->Ci.buf,msg->Ci.len);
-
-  /*if(msg->Ci.len == 0) {
-    size += cbor_put_bytes(&buffer, msg->Ci.buf, 0);
-  } else {
-    size += cbor_put_bytes_identifier(&buffer, msg->Ci.buf);
-  }*/
   if(msg->uad.len > 0) {
     size += cbor_put_bytes(&buffer, msg->uad.buf, msg->uad.len);
   }
@@ -233,6 +227,7 @@ edhoc_serialize_data_2(edhoc_data_2 *msg, unsigned char *buffer)
   size += cbor_put_bytes(&buffer, msg->Gy.buf, msg->Gy.len);
   size += cbor_put_bytes_identifier(&buffer, msg->Cr.buf, msg->Cr.len);
   return size;
+  
 }
 size_t
 edhoc_serialize_data_3(edhoc_data_3 *msg, unsigned char *buffer)
@@ -265,12 +260,19 @@ edhoc_deserialize_err(edhoc_msg_error *msg, unsigned char *buffer, uint8_t buff_
   if(buffer < buff_f) {
     if((PART == PART_I) && ((var == 0) || (var == 2))) {
       LOG_DBG("Part R with cx\n");
-      msg->Cx.buf = point_byte(&buffer);
-      msg->Cx.len = 1;
+      msg->Cx.len = get_bytes(&buffer,&msg->Cx.buf);
+      if(msg->Cx.len == 0){
+        LOG_DBG("CR byteidentfier\n");
+        msg->Cx.buf = point_byte(&buffer);
+        msg->Cx.len = 1;
+      }
     } else if((PART == PART_R) && ((var == 0) || (var == 1))) {
-      LOG_DBG("Part I with cx\n");
-      msg->Cx.buf = point_byte(&buffer);
-      msg->Cx.len = 1;
+      msg->Cx.len = get_bytes(&buffer,&msg->Cx.buf);
+      if(msg->Cx.len == 0){
+        LOG_DBG("CR byteidentfier\n");
+        msg->Cx.buf = point_byte(&buffer);
+        msg->Cx.len = 1;
+      }
     } else {
       msg->Cx = (bstr){NULL, 0 };
     }
@@ -362,22 +364,24 @@ edhoc_deserialize_msg_2(edhoc_msg_2 *msg, unsigned char *buffer, size_t buff_sz)
       msg->data.Ci.len = 1;
     }
   }
-  
-  /*if(!((0x40 <= buffer[0]) && (buffer[0] <= 0x58))) {
-    msg->data.Ci.buf = point_byte(&buffer);
-    msg->data.Ci.len = 1;
-  } else {
-    msg->data.Ci.buf = NULL;
-    msg->data.Ci.len = 0;
-  }*/
+
 
   msg->data.Gy.len = get_bytes(&buffer, &msg->data.Gy.buf);
+  LOG_INFO("GY:");
+  print_buff_8_info(msg->data.Gy.buf,msg->data.Gy.len);
   if(msg->data.Gy.len == 0) {
     LOG_ERR("error code (%d)\n ", ERR_MSG_MALFORMED);
     return ERR_MSG_MALFORMED;
   }
-  msg->data.Cr.buf = point_byte(&buffer);
-  msg->data.Cr.len = 1;
+  
+  msg->data.Cr.len = get_bytes(&buffer,&msg->data.Cr.buf);
+
+  if(msg->data.Cr.len == 0){
+    LOG_INFO("point byte");
+    msg->data.Cr.buf = point_byte(&buffer);
+    msg->data.Cr.len = 1;
+  }
+
   data_sz = buffer - msg->data_2.buf;
   msg->data_2.len = data_sz;
 
@@ -401,24 +405,15 @@ edhoc_deserialize_msg_3(edhoc_msg_3 *msg, unsigned char *buffer, size_t buff_sz)
     msg->data.Cr = (bstr){NULL, 0 };
   } else {
     msg->data.Cr.len = get_bytes(&buffer,&msg->data.Cr.buf);
+    msg->data_3.len = msg->data.Cr.len + 1;
     if(msg->data.Cr.len == 0){
       LOG_DBG("CR byteidentfier\n");
       msg->data.Cr.buf = point_byte(&buffer);
       msg->data.Cr.len = 1;
-      //data_sz++;
+      msg->data_3.len = msg->data.Cr.len;
     }
   }
-  
-  /*if(!((0x40 <= buffer[0]) && (buffer[0] <= 0x58))) {
-    msg->data.Cr.buf = point_byte(&buffer);
-    msg->data.Cr.len = 1;
-    data_sz++;
-  } else {
-    msg->data.Cr.buf = NULL;
-    msg->data.Cr.len = 0;
-  }*/
-  //msg->data_3.len = data_sz;
-  msg->data_3.len = msg->data.Cr.len;
+
   msg->cipher.len = get_bytes(&buffer, &msg->cipher.buf);
   if(msg->cipher.len == 0) {
     LOG_ERR("error code (%d)\n ", ERR_MSG_MALFORMED);
@@ -494,7 +489,6 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
       return key_sz;
     }
     break;
-    //return key->kid_sz;
 
   /*TODO: include cases for each different support authtication case */
   case 32:

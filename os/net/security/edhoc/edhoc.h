@@ -80,7 +80,6 @@
 #define MAC_LEN 8
 
 
-
 /**
  * \brief EDHOC session struct 
  */
@@ -89,9 +88,9 @@ typedef struct edhoc_session {
   uint8_t method;
   uint8_t suit;   
   uint8_t suit_rx;   
-  bstr Gx;   
-  uint8_t cid;
-  uint8_t cid_rx;
+  bstr Gx;
+  int cid;   
+  int cid_rx;
   bstr id_cred_x;
   bstr cred_x;
   bstr th;
