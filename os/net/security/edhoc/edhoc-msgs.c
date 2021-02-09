@@ -430,6 +430,8 @@ uint8_t
 edhoc_get_cred_x_from_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **key)
 {
   cose_key_t *auth_key;
+  LOG_INFO("kid:");
+  print_buff_8_info(kid,kid_sz);
   if(edhoc_check_key_list_kid(kid, kid_sz, &auth_key) == 0) {
     LOG_ERR("The authentication key id is not in the list\n");
     return ERR_NOT_ALLOWED_IDENTITY;
@@ -467,7 +469,11 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
     LOG_DBG("key id sz (%d)\n", key->kid_sz);
     ptr = key->kid;
     if(key->kid[0] == 0){
+      LOG_DBG("is a byte array:");
       key->kid_sz = get_bytes(p,&ptr);
+      print_buff_8_dbg(ptr,key->kid_sz);
+      memcpy(key->kid,ptr,key->kid_sz);
+      print_buff_8_dbg(key->kid,key->kid_sz);
     }
     label = 0;
   }

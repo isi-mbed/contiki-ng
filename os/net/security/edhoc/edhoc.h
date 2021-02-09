@@ -72,12 +72,14 @@
 #endif
 
 #ifndef EDHOC_CID 
-#define EDHOC_CID 0
+#define EDHOC_CID 0x1
 #endif
 /**
  * \brief MAC length
  */
 #define MAC_LEN 8
+
+
 
 /**
  * \brief EDHOC session struct 
@@ -322,19 +324,6 @@ int16_t edhoc_kdf(uint8_t *result, uint8_t *key, bstr th, char *label, uint16_t 
 */
 uint8_t edhoc_get_authentication_key(edhoc_context_t *ctx);
 
-/**
- * \brief Handle the EDHOC Message 2 received to get the Gy paramter
- * \param ctx EDHOC Context struct
- * \retval ERR_CODE when an EDHOC ERROR is detected return a negative number correspondig to the specific error code
- * \retval 1 when EDHOC decode and verify success
- * 
- * Used by Initiator EDHOC part to process the Message 2 receive
- * - Decode the message 2
- * - Get the Gy parameter from the received Message 2
- * 
- * If any verification step fails to return an EDHOC ERROR code and, if all the steps success return 1.
- */
-int edhoc_handler_msg_2_decompress(edhoc_context_t *ctx);
 
 #endif /* _EDHOC_H_ */
 /** @} */

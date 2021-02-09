@@ -40,6 +40,9 @@
 #include "sys/rtimer.h"
 #include "edhoc-msgs.h"
 
+#define MAC_2 2
+#define MAC_3 3
+
 //static rtimer_clock_t time;
 
 static uint8_t buf[MAX_BUFFER];
@@ -125,40 +128,30 @@ generate_cred_x(cose_key *cose, uint8_t *cred)
   size += cbor_put_text(&cred, cose->identity.buf, cose->identity.len);
   return size;
 }
-/*TODO : Check the correct id_cred selection */
+
 static size_t
-generate_id_cred_x(cose_key *cose, uint8_t *cred) /*TO DO. Not sure of the cred id formation for our case */
+generate_id_cred_x(cose_key *cose, uint8_t *cred)
 {
   size_t size = 0;
-  if(AUTHENT_TYPE == PRKI) {
+    /*TODO: PRKI Include a reduce form of the credentials*/
+  /*if(AUTHENT_TYPE == PRKI) {
     size += cbor_put_map(&cred, 2);
     size += cbor_put_unsigned(&cred, 32);
     size += cbor_put_bytes(&cred, cose->x.buf, cose->x.len);
     size += cbor_put_text(&cred, "subject name", strlen("subject name"));
     size += cbor_put_text(&cred, cose->identity.buf, cose->identity.len);
-  }
+  }*/
+  LOG_INFO("kid:");
+  print_buff_8_info(cose->kid.buf,cose->kid.len);
+  /*PRK_ID Include KID*/
   if(AUTHENT_TYPE == PRK_ID) {
     size += cbor_put_map(&cred, 1);
     size += cbor_put_unsigned(&cred, 4);
     size += cbor_put_bytes(&cred, cose->kid.buf, cose->kid.len);
   }
+  /*PRK_2 Include directly the credential used for authentication ID_CRED_X = CRED_X*/
   if(AUTHENT_TYPE == PRKI_2) {
     size = generate_cred_x(cose,cred);
-   /* if(cose->crv == 1) {
-      size += cbor_put_map(&cred, 4);
-    } else {
-      size += cbor_put_map(&cred, 3);
-    }
-    size += cbor_put_unsigned(&cred, 1);
-    size += cbor_put_unsigned(&cred, cose->kty);
-    size += cbor_put_negative(&cred, 1);
-    size += cbor_put_unsigned(&cred, cose->crv);
-    size += cbor_put_negative(&cred, 2);
-    size += cbor_put_bytes(&cred, cose->x.buf, cose->x.len);
-    if(cose->crv == 1) {
-      size += cbor_put_negative(&cred, 3);
-      size += cbor_put_bytes(&cred, cose->y.buf, cose->y.len);
-    }*/
   }
   return size;
 }
@@ -192,45 +185,8 @@ set_rx_cid(edhoc_context_t *ctx, uint8_t *cidrx, uint8_t cidrx_sz)
       LOG_ERR("error code (%d) - CID bigger than 1B\n ", ERR_CID_NOT_VALID);
       return ERR_CID_NOT_VALID;
   }
-  //return 0;
 }
-/*static int8_t
-set_rx_cid(edhoc_context_t *ctx, uint8_t *cidrx, uint8_t cidrx_sz)
-{
-  if(cidrx[0] == ctx->session.cid) {
-    LOG_ERR("error code (%d)\n ", ERR_CID_NOT_VALID);
-    while(ctx->session.cid == cidrx[0])
-      ctx->session.cid = (uint8_t)random_rand() % ((64 + 1) - 25) + 25; // the cid number can  be between 25 and 64 
-    LOG_DBG("set a new CID different from the rx value");
-  }
-  if(cidrx_sz == 1) {
-    ctx->session.cid_rx = cidrx[0] + 24;
 
-  } else {
-    LOG_ERR("error code (%d)\n ", ERR_MSG_MALFORMED);
-    return ERR_MSG_MALFORMED;
-  }
-  return 0;
-}*/
-/*static int8_t
-check_correlation(uint8_t *cid, uint8_t *cidnew, uint8_t cid_sz)
-{
-
-  if(cid_sz == 1){
-    if(cid[0] != cidnew[0]) {
-      LOG_ERR("error code (%d)\n ", ERR_CORELLATION);
-      return ERR_CORELLATION;
-    }
-  }
-  else{
-    if(memcmp(cid,cidnew,cid_sz)){
-      LOG_ERR("error code (%d)\n ", ERR_CORELLATION);
-      return ERR_CORELLATION;
-    }
-  }
-  return 0;
-}
-*/
 static int8_t
 check_rx_suit(edhoc_context_t *ctx, uint8_t suitrx)
 {
@@ -387,8 +343,8 @@ set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, 
   memcpy(cose->external_aad, th_cbor, th_cbor_sz);
   memcpy((cose->external_aad + th_cbor_sz), ctx->session.cred_x.buf, ctx->session.cred_x.len);
   memcpy((cose->external_aad + th_cbor_sz + ctx->session.cred_x.len), ad, ad_sz);
-
-  if(mac_num == 2) {
+ 
+  if(mac_num == MAC_2) {
     LOG_INFO("K_2m:\n");
     edhoc_kdf(cose->key, ctx->eph_key.prk_3e2m, ctx->session.th, "K_2m", strlen("K_2m"), KEY_DATA_LENGHT);
     LOG_INFO("K_2m (%d bytes):", KEY_DATA_LENGHT);
@@ -397,7 +353,7 @@ set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, 
     edhoc_kdf(cose->nonce, ctx->eph_key.prk_3e2m, ctx->session.th, "IV_2m", strlen("IV_2m"), IV_LENGHT);
     LOG_INFO("IV_2m (%d bytes):", IV_LENGHT);
     print_buff_8_info(cose->nonce,IV_LENGHT);
-  } else if(mac_num == 3) {
+  } else if(mac_num == MAC_3) {
     LOG_INFO("K_3m:\n");
     edhoc_kdf(cose->key, ctx->eph_key.prk_4x3m, ctx->session.th, "K_3m", strlen("K_3m"), KEY_DATA_LENGHT);
     LOG_INFO("K_3m (%d bytes):", KEY_DATA_LENGHT);
@@ -425,11 +381,10 @@ gen_mac_dh(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac)
 {
   uint8_t mac_num = 0;
   if(PART == PART_I){
-    mac_num = 3;
+    mac_num = MAC_3;
   }
-  else if(PART == PART_R)
-  {
-    mac_num = 2;
+  else if(PART == PART_R){
+    mac_num = MAC_2;
   }
   cose_encrypt0 *cose = cose_encrypt0_new();
   if(!set_mac(cose, ctx, ad, ad_sz, mac_num)) {
@@ -448,11 +403,11 @@ check_mac_dh(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *cipher,
 {
   uint8_t mac_num = 0;
   if(PART == PART_I){
-    mac_num = 2;
+    mac_num = MAC_2;
   }
   else if(PART == PART_R)
   {
-    mac_num = 3;
+    mac_num = MAC_3;
   }
   LOG_DBG("AD (%d):", ad_sz);
   print_char_8_dbg((char *)ad, ad_sz);
@@ -515,14 +470,8 @@ gen_prk_2e(edhoc_context_t *ctx)
 static uint8_t
 gen_k_2e(edhoc_context_t *ctx, uint16_t lenght)
 {
-  uint16_t info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "K_2e", strlen("K_2e"), lenght);
-  if(info_sz == 0) {
-    LOG_ERR("Error in generate info for k_2e\n");
-    return 0;
-  }
-  LOG_INFO("k_2e info (CBOR-encoded) (%d bytes):", info_sz);
-  print_buff_8_info(inf, info_sz);
-  int8_t er = hkdf_expand(ctx->eph_key.prk_2e, ECC_KEY_BYTE_LENGHT, inf, info_sz, ctx->eph_key.k2_e, lenght);
+  LOG_INFO("k_2e\n");
+  int8_t er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
   if(er < 1) {
     return 0;
   }
@@ -604,33 +553,22 @@ decrypt_ciphertext_3(edhoc_context_t *ctx, uint8_t *ciphertext, uint16_t ciphert
   uint8_t *th3_ptr = cose->external_aad;
   memcpy(th3_ptr,ctx->session.th.buf,ctx->session.th.len);
   cose->external_aad_sz = ctx->session.th.len;
-  //cose->external_aad_sz = cbor_put_bytes(&th3_ptr, ctx->session.th.buf, ctx->session.th.len);
+
   cose_encrypt0_set_ciphertext(cose, ciphertext, ciphertext_sz);
   /* COSE encrypt0 set header */
   cose_encrypt0_set_header(cose, NULL, 0, NULL, 0);
-  /* generate info for K */
-  uint16_t info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "K_3ae", strlen("K_3ae"), KEY_DATA_LENGHT);
-  if(info_sz == 0) {
-    LOG_ERR("error in info for decrypt ciphertext 3\n");
-    return 0;
-  }
-
-  /*Set K in cose */
-  int8_t er = hkdf_expand(ctx->eph_key.prk_3e2m, ECC_KEY_BYTE_LENGHT, inf, info_sz, cose->key, KEY_DATA_LENGHT);
+  /* generate K3_ae */
+  LOG_INFO("K_3ae\n");
+  int8_t er = edhoc_kdf( cose->key,ctx->eph_key.prk_3e2m, ctx->session.th, "K_3ae", strlen("K_3ae"),KEY_DATA_LENGHT);
   if(er < 1) {
     LOG_ERR("error in expand for decrypt ciphertext 3\n");
     return 0;
   }
   cose->key_sz = KEY_DATA_LENGHT;
 
-  /* generate info for IV */
-  info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "IV_3ae", strlen("IV_3ae"), IV_LENGHT);
-  if(info_sz == 0) {
-    LOG_ERR("error in info for decrypt ciphertext 3\n");
-    return 0;
-  }
-  /*Set IV in cose */
-  er = hkdf_expand(ctx->eph_key.prk_3e2m, ECC_KEY_BYTE_LENGHT, inf, info_sz, cose->nonce, IV_LENGHT);
+  /* generate IV */
+  LOG_INFO("IV_3ae\n");
+  er = edhoc_kdf( cose->nonce,ctx->eph_key.prk_3e2m, ctx->session.th, "IV_3ae", strlen("IV_3ae"), IV_LENGHT);
   if(er < 1) {
     LOG_ERR("error in expand for decrypt ciphertext 3\n");
     return 0;
@@ -652,7 +590,7 @@ decrypt_ciphertext_3(edhoc_context_t *ctx, uint8_t *ciphertext, uint16_t ciphert
   return cose->plaintext_sz;
 }
 static uint16_t 
-gen_plaintext_2(uint8_t * buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz){
+gen_plaintext(uint8_t * buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz){
   uint8_t * pint = (ctx->session.id_cred_x.buf);
   uint8_t* pout = buffer;
   uint8_t num = get_maps_num(&pint);
@@ -667,13 +605,15 @@ gen_plaintext_2(uint8_t * buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_s
     }
     else if(size == 1)
     {
+      LOG_DBG("Byte identifier\n");
       pint = buffer;
       cbor_put_bytes_identifier(&pint,pout,size);   
       LOG_DBG("(%d)\n",buffer[0]);  
     }
     else{
+      LOG_DBG("Byte array\n");
       pint = buffer;
-      size = cbor_put_bytes(&pint,pout,size) - 1; 
+      size = cbor_put_bytes(&pint,pout,size); 
     }
   }
   else
@@ -701,33 +641,14 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
   uint8_t *th3_ptr = cose->external_aad;
   cose->external_aad_sz = ctx->session.th.len;
   memcpy(th3_ptr,ctx->session.th.buf,ctx->session.th.len);
-  //cose->external_aad_sz = cbor_put_bytes(&th3_ptr, ctx->session.th.buf, ctx->session.th.len);
 
-  /*generate plaintext and set it in cose */
-  
-  /*uint8_t *ptr_p = &cose->plaintext[ctx->session.id_cred_x.len];
-  memcpy(cose->plaintext, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
-  uint16_t sz = cbor_put_bytes(&ptr_p, mac, mac_sz);
-  sz += cbor_put_bytes(&ptr_p, ad, ad_sz);
-  cose->plaintext_sz = ctx->session.id_cred_x.len + sz;*/
-  cose->plaintext_sz = gen_plaintext_2(cose->plaintext, ctx, ad, ad_sz);
+  cose->plaintext_sz = gen_plaintext(cose->plaintext, ctx, ad, ad_sz);
   LOG_INFO("P_3ae (%d bytes):", cose->plaintext_sz);
   print_buff_8_info(cose->plaintext, cose->plaintext_sz);
-  //gen_plaintext_2(uint8_t * buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz){
 
-  /*LOG_INFO("P_3ae (%d):",cose->plaintext_sz);
-  print_buff_8_info(cose->plaintext,cose->plaintext_sz);
-*/
-  /* generate info for K */
-  uint16_t info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "K_3ae", strlen("K_3ae"), KEY_DATA_LENGHT);
-  if(info_sz == 0) {
-    LOG_ERR("error in info for encrypt ciphertext 3\n");
-    return 0;
-  }
-  LOG_INFO("K_3ae info (CBOR-encoded) (%d bytes):", info_sz);
-  print_buff_8_info(inf,info_sz);
-  /*Set K in cose */
-  er = hkdf_expand(ctx->eph_key.prk_3e2m, ECC_KEY_BYTE_LENGHT, inf, info_sz, cose->key, KEY_DATA_LENGHT);
+  /* generate  K */
+  LOG_INFO("K_3ae");
+  er = edhoc_kdf( cose->key,ctx->eph_key.prk_3e2m, ctx->session.th, "K_3ae", strlen("K_3ae"), KEY_DATA_LENGHT);
   if(er < 1) {
     LOG_ERR("error in expand for decrypt ciphertext 3\n");
     return 0;
@@ -735,17 +656,10 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
   cose->key_sz = KEY_DATA_LENGHT;
   LOG_INFO("K_3ae (%d bytes):", cose->key_sz);
   print_buff_8_info(cose->key,cose->key_sz);
-
-  /* generate info for IV */
-  info_sz = generate_info(inf, ctx->session.th.buf, ctx->session.th.len, "IV_3ae", strlen("IV_3ae"), IV_LENGHT);
-  if(info_sz == 0) {
-    LOG_ERR("error in info for decrypt ciphertext 3\n");
-    return 0;
-  }
-  LOG_INFO("IV_3ae info (CBOR-encoded) (%d bytes):", info_sz);
-  print_buff_8_info(inf,info_sz);
-  /*Set IV in cose */
-  er = hkdf_expand(ctx->eph_key.prk_3e2m, ECC_KEY_BYTE_LENGHT, inf, info_sz, cose->nonce, IV_LENGHT);
+ 
+  /* generate  IV */
+  LOG_INFO("IV_3ae\n");
+  er = edhoc_kdf( cose->nonce,ctx->eph_key.prk_3e2m, ctx->session.th, "IV_3ae", strlen("IV_3ae"), IV_LENGHT);
   if(er < 1) {
     LOG_ERR("error in expand for decrypt ciphertext 3\n");
     return 0;
@@ -789,13 +703,24 @@ edhoc_get_authentication_key(edhoc_context_t *ctx)
     LOG_ERR("Does not contains a key for the authentication key identity\n");
   }
   #endif
+  
+
   #ifdef AUTH_KID
   cose_key_t *key;
-  uint8_t key_id[1];
-  key_id[0] = AUTH_KID;
-  //key_id[1] = AUTH_KID;
+  uint8_t key_id[sizeof(int)];
+  uint8_t key_id_sz = 1;
+  int kid = AUTH_KID;
+  int quotient = (AUTH_KID / 256);
+  LOG_DBG("quotiont (%d)",quotient);
+  while(quotient != 0){
+    key_id_sz++;
+    quotient /= 256;
+    LOG_DBG("quotiont (%d)",quotient);
+  }
 
-  if(edhoc_check_key_list_kid(key_id, 1, &key)) {
+  memcpy(key_id,(uint8_t*)&kid,key_id_sz);
+  
+  if(edhoc_check_key_list_kid(key_id, key_id_sz, &key)) {
     memcpy(ctx->authen_key.private_key, key->private, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.public.x, key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.public.y, key->y, ECC_KEY_BYTE_LENGHT);
@@ -856,14 +781,8 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*generate id_cred_x and cred_x */
   /*The cose key include the authentication key */
   cose_key cose;
-  //cose_key_t *hkey = cose;
   LOG_DBG("PART R (Receiver): cose key of R for Authenticate MSG2 \n");
-  /*#ifdef AUTH_KEY_IDENTITY
-  generate_cose_key(&ctx->authen_key, &cose, AUTH_KEY_IDENTITY, strlen(AUTH_KEY_IDENTITY));
-  #else*/
-  //edhoc_get_cred_x_from_kid(ctx->authen_key.kid, ctx->authen_key.kid_sz, &cose);
   generate_cose_key(&ctx->authen_key, &cose, ctx->authen_key.identity, ctx->authen_key.identity_size);
-  //#endif
   cose_print_key(&cose);
 
   ctx->session.cred_x.buf = cred_x;
@@ -895,37 +814,26 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
 
 #if ((METHOD == METH1) || (METHOD == METH3))
   LOG_DBG("gen mac\n");
-  //gen_mac_dh(ctx, ad, ad_sz, mac, 2);
   gen_mac_dh(ctx, ad, ad_sz, mac);
   LOG_INFO("MAC_2 (%d b ytes):", MAC_LEN);
   print_buff_8_info(mac, MAC_LEN);
 #endif
    
-/*  memcpy(buf, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
-  uint8_t *ptr = buf + ctx->session.id_cred_x.len;
-  uint16_t cbor_sz = cbor_put_bytes(&ptr, mac, MAC_LEN);
-  if(ad_sz != 0) {
-    cbor_sz += cbor_put_bytes(&ptr, ad, ad_sz);
-  }*/
-  uint16_t  p_sz = gen_plaintext_2(buf, ctx, ad, ad_sz);
+  uint16_t  p_sz = gen_plaintext(buf, ctx, ad, ad_sz);
   LOG_INFO("P_2e (%d bytes):", p_sz);
   print_buff_8_info(buf, p_sz);
-  //gen_k_2e(ctx, ctx->session.id_cred_x.len + cbor_sz);
   gen_k_2e(ctx, p_sz);
   
  // time = RTIMER_NOW();   
   gen_ciphertext_2(ctx, buf,p_sz);
-  //gen_ciphertext_2(ctx, buf, ctx->session.id_cred_x.len + cbor_sz);
  // time = RTIMER_NOW() - time;
  // LOG_INFO("Gen ciphertext2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
   
-  //print_buff_8_dbg(buf, ctx->session.id_cred_x.len + cbor_sz);
   LOG_INFO("CIPHERTEXT_2 (%d bytes):", p_sz);
   print_buff_8_info(buf, p_sz);
   /*set ciphertext on msg tx */
   ctx->tx_sz = data_sz;
   uint8_t *ptr = ctx->msg_tx + data_sz;
-  //ctx->session.ciphertex_2.len = cbor_put_bytes(&ptr, buf, ctx->session.id_cred_x.len + cbor_sz);
   ctx->session.ciphertex_2.len = cbor_put_bytes(&ptr, buf, p_sz);
   ctx->tx_sz += ctx->session.ciphertex_2.len;
 
@@ -944,7 +852,6 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   size_t data_3_sz = set_data_3(ctx);
 
   /*gen TH3 */
-  //LOG_INFO("TH3\n");
   /*Set the pointer to th2 */
   ctx->session.th.buf = ctx->eph_key.th;
   ctx->session.th.len = ECC_KEY_BYTE_LENGHT;
@@ -954,11 +861,7 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*Generate cose authentication key */
   cose_key cose;
   LOG_DBG("PART I (Initiator): cose key of I for Authenticate MSG3\n");
-  /*#ifdef AUTH_KEY_IDENTITY
-  generate_cose_key(&ctx->authen_key, &cose, AUTH_KEY_IDENTITY, strlen(AUTH_KEY_IDENTITY));
-  #else*/
   generate_cose_key(&ctx->authen_key, &cose, ctx->authen_key.identity, ctx->authen_key.identity_size);
- // #endif
 
   cose_print_key(&cose);
   LOG_INFO("SK_I (Initiator's private authnetication key) (%d bytes):",ECC_KEY_BYTE_LENGHT);
@@ -1010,8 +913,7 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   ctx->tx_sz = data_3_sz + ciphertext_sz;
   
   //time = RTIMER_NOW() - time;
- //LOG_INFO("Gen ciphertext 3: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time);
- 
+
   /*Point ciphertext_3 for the exporter */
   uint8_t *ptr_c = &ctx->msg_tx[data_3_sz];
   ctx->session.ciphertex_3.len = get_bytes(&ptr_c, &ctx->session.ciphertex_3.buf);
@@ -1200,13 +1102,7 @@ edhoc_handler_msg_2(edhoc_msg_2 *msg2, edhoc_context_t *ctx, uint8_t *buffer, si
     return er;
   }
   /* TODO: retrive protocol state */
-  /* if the correlation is 0 or 2 check that the received msg have the correct CU */
   if((CORR == NON_EXTERNAL_CORR) || (CORR == EXTERNAL_CORR_V)) {
-    /*if((msg2->data.Ci.buf[0] + 24) != ctx->session.cid) {
-      LOG_ERR("Wrong Cid rx: %d - %d \n", msg2->data.Ci.buf[0] + 24, ctx->session.cid);
-      LOG_ERR("error code (%d)\n ", ERR_WRONG_CID_RX);
-      return ERR_WRONG_CID_RX;
-    }*/
     er = check_correlation(&msg2->data.Ci.buf,msg2->data.Ci.len,ctx);
     if( er < 0){
       LOG_ERR("Correlation error (%d)\n",er);
@@ -1226,8 +1122,6 @@ edhoc_handler_msg_2(edhoc_msg_2 *msg2, edhoc_context_t *ctx, uint8_t *buffer, si
 
   /*Gen K_2e */
   gen_k_2e(ctx, msg2->cipher.len);
-  /*LOG_DBG("K2_e (%d): ", (int)msg2->cipher.len);
-  print_buff_8_dbg(ctx->eph_key.k2_e, msg2->cipher.len);*/
 
   /*Set ciphertext */
   ctx->session.ciphertex_2.buf = msg2->cipher.buf;
@@ -1283,11 +1177,6 @@ edhoc_handler_msg_3(edhoc_msg_3 * msg3,edhoc_context_t *ctx, uint8_t *buffer, si
   
 
   if((CORR == NON_EXTERNAL_CORR) || (CORR == EXTERNAL_CORR_U)) {
-    /*if((msg3->data.Cr.buf[0] + 24) != ctx->session.cid) {
-      LOG_ERR("Wrong Cid rx: %d - %d \n", msg3->data.Cr.buf[0] + 24, ctx->session.cid);
-      LOG_ERR("error code (%d)\n ", ERR_WRONG_CID_RX);
-      return ERR_WRONG_CID_RX;
-    }*/
     uint8_t ** ptr = &msg3->data.Cr.buf;
     er = check_correlation(ptr,msg3->data.Cr.len,ctx);
     if( er < 0){
@@ -1300,7 +1189,7 @@ edhoc_handler_msg_3(edhoc_msg_3 * msg3,edhoc_context_t *ctx, uint8_t *buffer, si
   ctx->session.ciphertex_3.len = msg3->cipher.len;
   LOG_INFO("CIPHERTEXT_3 (%d bytes):", ctx->session.ciphertex_3.len);
   print_buff_8_info(ctx->session.ciphertex_3.buf,ctx->session.ciphertex_3.len);
-  /*TO DO: retrive protocol state */
+
   LOG_INFO("data_3 (%d bytes):",msg3->data_3.len);
   print_buff_8_info(msg3->data_3.buf,msg3->data_3.len);
 
@@ -1369,12 +1258,13 @@ edhoc_authenticate_msg(edhoc_context_t *ctx ,uint8_t **ptr,uint8_t cipher_len, u
     LOG_DBG("PART R Generate prkx4x3m \n");
     gen_prk_4x3m(ctx, &authenticate, 1);
   }
-  if (ctx->session.id_cred_x.len == 1){
+  //if (ctx->session.id_cred_x.len == 1){
     LOG_DBG("create id cred x from bstr idendtifier\n");
     ctx->session.id_cred_x.len = generate_id_cred_x(&cose,id_cred_x);
     ctx->session.id_cred_x.buf = id_cred_x;
-  }
-
+  //}
+  LOG_DBG("ID_CRED_X (%d)", ctx->session.id_cred_x.len);
+  print_buff_8_dbg(ctx->session.id_cred_x.buf,ctx->session.id_cred_x.len);
 #if ((METHOD == METH0) || (METHOD == METH2))
 
 #endif

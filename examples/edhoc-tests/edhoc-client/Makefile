@@ -1,5 +1,4 @@
 CONTIKI_PROJECT = edhoc-test-client 
-#PROJECT_SOURCEFILES += edhoc-client.c
 
 all: $(CONTIKI_PROJECT)
 

@@ -75,7 +75,7 @@ PROCESS_THREAD(edhoc_example_client, ev, data)
 
   /*Set the other part authetication key */
   edhoc_create_key_list();
-  cose_key_t auth_client = { NULL, { 0x24 }, 1,
+  cose_key_t auth_client = { NULL, { 0x24}, 1,
                             // { "Node_101" }, strlen("Node_101"),
                             { "" }, 0, 
                              KEY_TYPE, KEY_CRV,

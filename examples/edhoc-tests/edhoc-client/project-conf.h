@@ -3,16 +3,16 @@
 
 #define LPM_CONF_MAX_PM 1
 
-
+#define IEEE802154_CONF_PANID 0xaaaa
 
 /* Mandatory EDHOC definitions on Client*/
-//#define AUTH_KEY_IDENTITY "Node_101"
 
 #define AUTH_KID 0x24
 
 /*coap definition */
 #define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:ab09]"
-
+//#define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:9687]"
+//#define EDHOC_CONF_SERVER_EP "coap://[2001:648:23b0::2:4]"
 //#define EDHOC_CONF_SERVER_EP "coap://[fd01::201:1:1:1]" /* Server IP for Cooja simulator*/
 #define EDHOC_CONF_PART PART_I
 //#define EDHOC_CONF_AUTHENT_TYPE PRKI_2/*Every part have the authentication key of the other before run edhoc protcol */
@@ -43,7 +43,7 @@
 //#define LOG_CONF_LEVEL_RPL LOG_LEVEL_DBG 
 //#define LOG_CONF_LEVEL_COAP LOG_LEVEL_INFO
 /*#define LOG_CONF_LEVEL_TCPIP LOG_LEVEL_DBG */
-/*#define LOG_CONF_LEVEL_IPV6 LOG_LEVEL_DBG */
+//#define LOG_CONF_LEVEL_IPV6 LOG_LEVEL_DBG 
 
 
 #define WATCHDOG_CONF_ENABLE 0x00000000
