@@ -40,10 +40,10 @@
  * @{
  * This is an implementation of CBOR Object Signing and Encryption (COSE) protocol (IETF RFC 8152)
  * when COSE_Encrypt0 structures are used. This specification describes how to create and process signatures,
- * message authentication codes, and encryption using CBOR for serialization. This specification additionally 
- * describes how to represent cryptographic keys using CBOR. The specific file implements just the encryption of 
+ * message authentication codes, and encryption using CBOR for serialization. This specification additionally
+ * describes how to represent cryptographic keys using CBOR. The specific file implements just the encryption of
  * COSE_Encrypt0 structures used by EDHOC protocol.
-**/
+ **/
 
 #ifndef _COSE_H_
 #define _COSE_H_
@@ -93,7 +93,6 @@
 #else
 #define COSE_ALG_ID COSE_Algorithm_AES_CCM_16_64_128
 #endif
-
 
 #if COSE_ALG_ID == COSE_Algorithm_AES_CCM_16_64_128
 /**
@@ -180,7 +179,7 @@ typedef struct sstr_cose {
  */
 
 /**
- * \brief COSE_encrypt0 struct 
+ * \brief COSE_encrypt0 struct
  */
 typedef struct cose_encrypt0 {
   uint8_t protected_header[COSE_MAX_BUFFER];
@@ -204,10 +203,10 @@ typedef struct cose_encrypt0 {
 /**
  * \brief enc_structure struct [RFC8152]
  */
-typedef struct enc_structure { 
+typedef struct enc_structure {
   sstr_cose str_id;
-  bstr_cose protected;   
-  bstr_cose external_aad;  
+  bstr_cose protected;
+  bstr_cose external_aad;
 }enc_structure;
 
 /**
@@ -224,18 +223,18 @@ typedef struct cose_key {
 } cose_key;
 
 /**
- * \brief Create a new cose_encrypt0 context 
- * \return cose_encrypt0 new cose_encrypt0 context struct 
- * 
+ * \brief Create a new cose_encrypt0 context
+ * \return cose_encrypt0 new cose_encrypt0 context struct
+ *
  * Used to create a news ose_encrypt0 and allocate at the memory reserved dynamically
  */
 cose_encrypt0 *cose_encrypt0_new();
 
 /**
- * \brief Close the cose_encrypt0 context 
+ * \brief Close the cose_encrypt0 context
  * \param enc cose_encrypt0 context struct
- * 
- * Used to de-allocate the memory reserved for the cose_encrypt0 context 
+ *
+ * Used to de-allocate the memory reserved for the cose_encrypt0 context
  */
 void cose_encrypt0_finalize(cose_encrypt0 *enc);
 
@@ -256,12 +255,12 @@ void cose_encrypt0_finalize(cose_encrypt0 *enc);
  * \param nonce input point to the nonce (Initialization Vector (IV) value)
  * \param nonce_sz input nonce length
  * \return 1 if both key and nonce have the correct length and 0 otherwise
- * 
+ *
  *  Used before encryption/decryption operation to select:
- *  - the algorithm used for the security processing 
+ *  - the algorithm used for the security processing
  *  - the encryption Key
  *  - the nonce: It is the Initialization Vector (IV) value
- * 
+ *
  */
 uint8_t cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key_sz, uint8_t *nonce, uint16_t nonce_sz);
 
@@ -273,10 +272,10 @@ uint8_t cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uin
  * \param add input The Aditional Authentication Data
  * \param add_sz input The Aditional Authentication Data length
  * \return 1 and the plain_sz is smaller than the maximum buffer size
- * 
+ *
  *  Used before encryption operation to select:
- *  - The plaintext or ciphertext contained by the message to encrypt 
- *  - Additional Authentication Data (AAD) contained by the message 
+ *  - The plaintext or ciphertext contained by the message to encrypt
+ *  - Additional Authentication Data (AAD) contained by the message
  */
 uint8_t cose_encrypt0_set_content(cose_encrypt0 *enc, uint8_t *plain, uint16_t plain_sz, uint8_t *add, uint8_t add_sz);
 
@@ -286,9 +285,9 @@ uint8_t cose_encrypt0_set_content(cose_encrypt0 *enc, uint8_t *plain, uint16_t p
  * \param ciphertext input The ciphertext contained by the cipher message
  * \param ciphertext_sz  input The ciphertext length
  * \return 1 and the ciphertext_sz is smaller than the maximum buffer size
- * 
+ *
  *  Used before decryption operation to select:
- *  - The plaintext or ciphertext contained by the message to decrypt  
+ *  - The plaintext or ciphertext contained by the message to decrypt
  */
 uint8_t cose_encrypt0_set_ciphertext(cose_encrypt0 *enc, uint8_t *ciphertext, uint16_t ciphertext_sz);
 
@@ -297,50 +296,47 @@ uint8_t cose_encrypt0_set_ciphertext(cose_encrypt0 *enc, uint8_t *ciphertext, ui
  * \param enc output cose_encrypt0 context
  * \param prot input protected bucket
  * \param prot_sz input protected bucket length
- * \param unp input unprotected bucket 
+ * \param unp input unprotected bucket
  * \param unp_sz input unprotected bucket length
- * 
+ *
  *  Used before encryption/decryption operation to select:
  *  - The protected bucket contains parameters about the current layer that are to be cryptographically protected
  *  - The unprotected bucket contains parameters about the current layer that are not cryptographically protected
- */ 
+ */
 void cose_encrypt0_set_header(cose_encrypt0 *enc, uint8_t *prot, uint16_t prot_sz, uint8_t *unp, uint16_t unp_sz);
 
 /**
- * \brief  encrypt the COSE_encrypt0 struct using AEAD algorithm 
- * \param enc cose_encrypt0 context 
- * \return ciphertext_sz if the input parameter selected is appropriate and the cypher success and 0 otherwise 
- * 
+ * \brief  encrypt the COSE_encrypt0 struct using AEAD algorithm
+ * \param enc cose_encrypt0 context
+ * \return ciphertext_sz if the input parameter selected is appropriate and the cypher success and 0 otherwise
+ *
  * This function implements the encryption algorithm AEAD on the data structure contained by the COSE_encrypt0 struct.
  * Before this function be called must be selected every necessary parameter of the enc (cose_encrypt0 context)
- * The ciphertext is returned in the ciphertext element of the cose_encrypt0 struct tagged by CBOR tag 16 bytes. 
- * 
- */ 
+ * The ciphertext is returned in the ciphertext element of the cose_encrypt0 struct tagged by CBOR tag 16 bytes.
+ *
+ */
 uint8_t cose_encrypt(cose_encrypt0 *enc);
 
-
 /**
- * \brief  decrypt the COSE_encrypt0 ciphertext using AEAD algorithm 
- * \param enc cose_encrypt0 context 
- * \return 1 if the TAG checking success and 0 otherwise 
- * 
+ * \brief  decrypt the COSE_encrypt0 ciphertext using AEAD algorithm
+ * \param enc cose_encrypt0 context
+ * \return 1 if the TAG checking success and 0 otherwise
+ *
  * This function implements the encryption algorithm AEAD on the data ciphertext element of the COSE_Encrypt0 tagged struct
  * to decrypted and check the TAG.
  * Before this function be called must be selected the ciphertext element of the enc (cose_encrypt0 context)
- * The plaintext is returned in the plaintext element of the cose_encrypt0 struct and the plaintext length in the plaintext_sz 
- * element as well. 
- * 
- */ 
+ * The plaintext is returned in the plaintext element of the cose_encrypt0 struct and the plaintext length in the plaintext_sz
+ * element as well.
+ *
+ */
 uint8_t cose_decrypt(cose_encrypt0 *enc);
-
 
 /**
  * \brief Print a key in a format of cose_key struct for debugging
- * \param cose input cose_key struct 
- * 
+ * \param cose input cose_key struct
+ *
  */
 void cose_print_key(cose_key *cose);
-
 
 #endif /* _COSE_H_ */
 /** @} */

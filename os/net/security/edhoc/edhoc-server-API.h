@@ -37,7 +37,7 @@
  */
 
 /**
- * \addtogroup edhoc 
+ * \addtogroup edhoc
  * @{
  */
 
@@ -50,25 +50,7 @@
 #include "edhoc-exporter.h"
 
 /**
- * \brief The max lenght of the EDHOC msg, as CoAP payload
- */
-#ifdef EDHOC_CONF_MAX_PAYLOAD
-#define MAX_DATA_LEN EDHOC_CONF_MAX_PAYLOAD
-#else
-#define MAX_DATA_LEN 64
-#endif
-
-/**
- * \brief The max lenght of the Aplication Data
- */
-#ifdef EDHOC_CONF_MAX_AD_SZ
-#define MAX_AD_SZ EDHOC_CONF_MAX_AD_SZ
-#else
-#define MAX_AD_SZ 16
-#endif
-
-/**
- * \brief Limite time value to EDHOC protocol finished 
+ * \brief Limite time value to EDHOC protocol finished
  */
 #ifdef EDHOC_CONF_TIMEOUT
 #define SERV_TIMEOUT_VAL EDHOC_CONF_TIMEOUT
@@ -76,16 +58,9 @@
 #define SERV_TIMEOUT_VAL 10000
 #endif
 
-/**
- * \brief EDHOC resource urti-path
- */
-#define WELL_KNOWN ".well-known/edhoc"
-
 /* EDHOC process states */
 #define SERV_FINISHED 1
 #define SERV_RESTART 2
-
-
 
 /**
  * \brief EDHOC context struct used in the EDHOC protocol
@@ -93,12 +68,12 @@
 edhoc_context_t *ctx;
 
 /**
- * \brief CoAp resource 
+ * \brief CoAp resource
  */
 extern coap_resource_t res_edhoc;
 
 /**
- * \brief EDHOC Server Struct 
+ * \brief EDHOC Server Struct
  */
 typedef struct edhoc_server_t {
   uint16_t con_num;
@@ -128,105 +103,101 @@ typedef struct ecc_data_even_t {
   edhoc_server_ad_t ad;
 }ecc_data_even_t;
 
-
-
-
-typedef struct serv_data_t{
-    coap_message_t *request;
-    coap_message_t *response;
-    edhoc_server_t *serv;
-   // uint8_t *msg_rx;
-   // size_t msg_rx_len;
+typedef struct serv_data_t {
+  coap_message_t *request;
+  coap_message_t *response;
+  edhoc_server_t *serv;
 } serv_data_t;
 struct serv_data_t *dat_ptr;
 
-
-void edhoc_server_process(coap_message_t* req,coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, uint8_t len);
-//edhoc_server_t serv;
 /**
  * \brief Activate the EDHOC CoAp Resource
- * 
- *  Activate the EDHOC well know CoAP Resource at the uri-path defined 
+ *
+ *  Activate the EDHOC well know CoAP Resource at the uri-path defined
  *  on the WELL_KNOW macro.
  */
 void edhoc_server_init();
 
 /**
  * \brief Create a new EDHOC context for a new EDHOC protocol session
- *  This function gets the DH-static authentication pair keys of the Server from the edhoc-key-storage. 
+ * \retval non-zero if the authenticaton credentials for the EDHOC server exist on the key-storage
+ *  and the EDHOC server start correctly.
+ *
+ *  This function gets the DH-static authentication pair keys of the Server from the edhoc-key-storage.
  *  The authentication keys must be established at the EDHOC key storage before running the EDHOC protocol.
  *  Create a new EDHOC context and generate the DH-ephemeral key for the specific session.
  *  A new EDHOC protocol session must be created for each new EDHOC client try
  */
 uint8_t edhoc_server_start();
-/*void
-edhoc_server_start( struct process * proc);*/
 
-//typedef struct  {
-  /* Containers for the State */
-/*  struct pt      pt;
-  struct process *process;
-} edhoc_serv_t;
-
-PT_THREAD(edhoc_server_start(edhoc_serv_t *state)); */
-
+/**
+ * \brief Reset the EDHOC context for a new EDHOC protocol session with a new client
+ * \retval non-zero if the authenticaton credentials for the EDHOC server exist on the key-storage
+ *  and the EDHOC server start correctly.
+ *
+ * Rest the EDHOC context to initiate a new EDHOC protocol session with a new client
+ * Before of ussing the export security contex of the before EDHOC context must be keep it
+ */
 uint8_t edhoc_server_restart();
+
 /**
  * \brief Check if an EDHOC server session have finished
- * \param ev process event 
+ * \param ev process event
  * \param data process data
  * \retval non-zero if EDHOC session finished success with a EDHOC client
- * 
- *  This function checks the events trigger from the EDHOC server protocol looking for the 
- *  SERV_FINSHED event. 
+ *
+ *  This function checks the events trigger from the EDHOC server protocol looking for the
+ *  SERV_FINSHED event.
  */
 int8_t edhoc_server_callback(process_event_t ev, void *data);
 
 /**
- * \brief Close the EDHOC context 
- * 
- * This function must be called after the Security Context is exported to liberate the 
- * allocated memory. 
+ * \brief Close the EDHOC context
+ *
+ * This function must be called after the Security Context is exported to liberate the
+ * allocated memory.
  */
 void edhoc_server_close();
 
 /**
- * \brief run the EDHOC Responder part
- * \param request The request CoAp message received
- * \param response The response CoAp message to send back
- * 
+ * \brief run the EDHOC Responder party process
+ * \param req The request CoAp message received
+ * \param res The response CoAp message to send back
+ * \param ser The EDHOC server struct
+ * \param msg A pointer to the buffer with the RX message
+ * \param len The RX message lenght
+ *
  *  This function must be called from a CoAP response POST handler to run the EDHOC protocol Responder
  *  part. The EDHOC messages 1 and message 3 are transferred in POST requests and the EDHOC message 2
- *  is transferred in 2.04 (Changed) responses.  
+ *  is transferred in 2.04 (Changed) responses.
  */
-void edhoc_server_resource(coap_message_t *request, coap_message_t *response);
-
+void edhoc_server_process(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, uint8_t len);
 
 /**
  * \brief Set the Application Data to be carried on EDHOC message 2
  * \param buff A pointer to a buffer that contains the Application data to be copied
  * \param buff_sz The Application data length
- * 
+ *
  * This function set the Application data to be carried on EDHOC message 2
  */
-void edhoc_server_set_ad_2(const void * buff, uint8_t buff_sz);
+void edhoc_server_set_ad_2(const void *buff, uint8_t buff_sz);
 
 /**
  * \brief Get the Application Data received in EDHOC message 1
  * \param buff A pointer to a buffer to copy the Application data
  * \return ad_sz The Application data length
- * 
+ *
  * This function copy on the buff the Application data from the EDHOC message 1 received
  */
-uint8_t edhoc_server_get_ad_1(char* buff);
+uint8_t edhoc_server_get_ad_1(char *buff);
 
 /**
  * \brief Get the Application Data received in EDHOC message 3
  * \param buff A pointer to a buffer to copy the Application data
  * \return ad_sz The Application data length
- * 
+ *
  * This function copy on the buff the Application data from the EDHOC message 3 received
  */
-uint8_t edhoc_server_get_ad_3(char* buff);
+uint8_t edhoc_server_get_ad_3(char *buff);
 #endif /* _EDHOC_SERVER_API_H_ */
 /** @} */

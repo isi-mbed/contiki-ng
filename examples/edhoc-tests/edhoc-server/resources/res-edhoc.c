@@ -22,11 +22,7 @@ res_edhoc_post_handler(coap_message_t *request, coap_message_t *response, uint8_
 {
   // Example allows only one request on time. There are no checks for multiply access !!! 
   if(*offset == 0) {
-    // Incoming Data 
     if(coap_block1_handler(request, response, msg_rx, &msg_rx_len, MAX_DATA_LEN)) {
-      // More Blocks will follow. Example waits for
-       // the last block and stores data into big_msg.
-       //
      LOG_DBG("handeler (%d)\n", (int)msg_rx_len);
       print_buff_8_dbg(msg_rx, msg_rx_len);
       return;
@@ -48,13 +44,6 @@ res_edhoc_post_handler(coap_message_t *request, coap_message_t *response, uint8_
     
   } else {
    
-    // request for more blocks 
-    /*if(*offset >= ctx->tx_sz) {
-      LOG_DBG("limited\n");
-      coap_set_status_code(response, BAD_OPTION_4_02);
-      coap_set_payload(response, "BlockOutOfScope", 15);
-      return;
-    }*/
     coap_set_status_code(response, CHANGED_2_04);
     memcpy(buffer, ctx->msg_tx + *offset, 64);
     if(ctx->tx_sz - *offset < preferred_size) {

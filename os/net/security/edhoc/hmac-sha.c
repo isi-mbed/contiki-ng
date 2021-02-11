@@ -95,12 +95,12 @@ static uint8_t
 sha_reset(sha_context_t *ctx)
 {
   uint8_t er = 0;
-  #ifdef ECC_SH2
+#ifdef ECC_SH2
   er = SHA256Reset(&ctx->data);
-  #endif
-  #ifdef CC2538_SH2
+#endif
+#ifdef CC2538_SH2
   sha256_init(&ctx->data);
-  #endif
+#endif
   return er;
 }
 static sha_context_t *
@@ -108,10 +108,10 @@ sha_new()
 {
   sha_context_t *ctx;
   ctx = sha_context_new();
-  #ifdef CC2538_SH2
+#ifdef CC2538_SH2
   LOG_INFO("SH256 for CC2538\n");
   crypto_init();
-  #endif
+#endif
   if(ctx) {
     sha_reset(ctx);
   }

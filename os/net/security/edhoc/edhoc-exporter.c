@@ -42,12 +42,12 @@
 void
 edhoc_exporter_print_oscore_ctx(oscore_ctx_t *osc)
 {
-  LOG_INFO("Initiator client CID: 0x%02x\n", osc->client_ID);
-  LOG_INFO("Responder server CID: 0x%02x\n", osc->server_ID);
-  LOG_INFO("OSCORE Master Secret (%d bytes):", OSCORE_KEY_SZ);
-  print_buff_8_info(osc->master_secret, OSCORE_KEY_SZ);
-  LOG_INFO("OSCORE Master Salt (%d bytes):", OSCORE_SALT_SZ);
-  print_buff_8_info(osc->master_salt, OSCORE_SALT_SZ);
+  LOG_PRINT("Initiator client CID: 0x%02x\n", osc->client_ID);
+  LOG_PRINT("Responder server CID: 0x%02x\n", osc->server_ID);
+  LOG_PRINT("OSCORE Master Secret (%d bytes):", OSCORE_KEY_SZ);
+  print_buff_8_print(osc->master_secret, OSCORE_KEY_SZ);
+  LOG_PRINT("OSCORE Master Salt (%d bytes):", OSCORE_SALT_SZ);
+  print_buff_8_print(osc->master_salt, OSCORE_SALT_SZ);
 }
 static int8_t
 gen_th4(edhoc_context_t *ctx)
@@ -56,15 +56,15 @@ gen_th4(edhoc_context_t *ctx)
   uint8_t *ptr = h4;
   uint8_t h4_sz = cbor_put_bytes(&ptr, ctx->session.th.buf, ctx->session.th.len);
   h4_sz += cbor_put_bytes(&ptr, ctx->session.ciphertex_3.buf, ctx->session.ciphertex_3.len);
-  LOG_INFO("Input to calculate TH_4 (CBOR Sequence) (%d bytes)",h4_sz);
-  print_buff_8_info(h4,h4_sz);
+  LOG_INFO("Input to calculate TH_4 (CBOR Sequence) (%d bytes)", h4_sz);
+  print_buff_8_info(h4, h4_sz);
   uint8_t er = compute_TH(h4, h4_sz, ctx->session.th.buf, ctx->session.th.len);
   if(er != 0) {
     LOG_ERR("ERR COMPUTED TH4\n ");
     return ERR_CODE;
   }
   LOG_INFO("TH4 (%d bytes):", ctx->session.th.len);
-  print_buff_8_info(ctx->session.th.buf,ctx->session.th.len);
+  print_buff_8_info(ctx->session.th.buf, ctx->session.th.len);
   return er;
 }
 int8_t

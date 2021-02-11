@@ -35,11 +35,11 @@
  *
  * \author
  *         Lidia Pocero <pocero@isi.gr>
- *         Christos Koulamas <cklm@isi.gr> 
+ *         Christos Koulamas <cklm@isi.gr>
  */
 
 /**
- * \addtogroup edhoc 
+ * \addtogroup edhoc
  * @{
  */
 #ifndef _EDHOC_EXPORTER_H_
@@ -78,32 +78,32 @@ typedef struct psk_ctx_t {
 
 /**
  * \brief Derive an OSCORE Context from EDHOC
- * \param osc output OSCORE Context struct 
+ * \param osc output OSCORE Context struct
  * \param ctx input EDHOC Context struct
  * \return negative number HKDF ERROR code when an ERROR happens in the key derivation
- * 
+ *
  *  This function is used to derive an OSCORE Security Context [RFC8613] from the EDHOC shared secret.
- *  This can be run from both EDHOC Initiator and Responder once the EDHOC protocol has finished 
- *  successfully. 
+ *  This can be run from both EDHOC Initiator and Responder once the EDHOC protocol has finished
+ *  successfully.
  */
 int8_t edhoc_exporter_oscore(oscore_ctx_t *osc, edhoc_context_t *ctx);
 
 /**
- * \brief Derive a new PSK Chaining 
- * \param psk output PSK Context struct 
+ * \brief Derive a new PSK Chaining
+ * \param psk output PSK Context struct
  * \param ctx input EDHOC Context struct
  * \return negative number HKDF ERROR code when an ERROR happens in the key derivation
- * 
+ *
  *  This function is used to derive new PSKs to use for authentication in future EDHOC exchanges.
- *  This can be run from both EDHOC Initiator and Responder once the EDHOC protocol has finished 
+ *  This can be run from both EDHOC Initiator and Responder once the EDHOC protocol has finished
  *  successfully.
  */
 int8_t edhoc_exporter_psk_chaining(psk_ctx_t *psk, edhoc_context_t *ctx);
 
 /**
  * \brief Print an OSCORE Context for debugging
- * \param osc input OSCORE Context struct 
- * 
+ * \param osc input OSCORE Context struct
+ *
  */
 void edhoc_exporter_print_oscore_ctx(oscore_ctx_t *osc);
 #endif /* _EDHOC_EXPORTER_H_ */

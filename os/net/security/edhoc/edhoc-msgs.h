@@ -102,13 +102,9 @@ void print_msg_1(edhoc_msg_1 *msg);
 void print_msg_2(edhoc_msg_2 *msg);
 void print_msg_3(edhoc_msg_3 *msg);
 
-size_t get_bytes(uint8_t **in, uint8_t **out);
-
 size_t edhoc_serialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer);
 size_t edhoc_serialize_data_2(edhoc_data_2 *msg, unsigned char *buffer);
 size_t edhoc_serialize_data_3(edhoc_data_3 *msg, unsigned char *buffer);
-size_t edhoc_serialize_msg_2(edhoc_msg_1 *msg, unsigned char *buffer, size_t buff_sz);
-size_t edhoc_serialize_msg_3(edhoc_msg_1 *msg, unsigned char *buffer, size_t buff_sz);
 size_t edhoc_serialize_err(edhoc_msg_error *msg, unsigned char *buffer);
 
 int8_t edhoc_deserialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, size_t buff_sz);
@@ -117,12 +113,12 @@ int8_t edhoc_deserialize_msg_3(edhoc_msg_3 *msg, unsigned char *buffer, size_t b
 int8_t edhoc_deserialize_err(edhoc_msg_error *msg, unsigned char *buffer, uint8_t buff_sz);
 uint8_t edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key);
 uint8_t edhoc_get_cred_x_from_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **key);
-
 uint8_t edhoc_get_sign(uint8_t **p, uint8_t **sign);
 uint8_t edhoc_get_ad(uint8_t **p, uint8_t *ad);
-uint8_t get_byte_identifier(uint8_t **in);
-uint8_t get_maps_num(uint8_t **in);
-size_t get_bytes(uint8_t **in, uint8_t **out);
-uint8_t get_unsigned(uint8_t **in);
+
+uint8_t edhoc_get_byte_identifier(uint8_t **in);
+uint8_t edhoc_get_maps_num(uint8_t **in);
+size_t edhoc_get_bytes(uint8_t **in, uint8_t **out);
+uint8_t edhoc_get_unsigned(uint8_t **in);
 
 #endif

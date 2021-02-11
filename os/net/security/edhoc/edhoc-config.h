@@ -35,7 +35,7 @@
  */
 
 /**
- * \addtogroup edhoc 
+ * \addtogroup edhoc
  * @{
  */
 
@@ -126,7 +126,7 @@
 /*#define P256_2 3    //AES-CCM-16-64-128, (HMAC 256/256) SHA-256, P-256, ES256, P-256, AES-CCM-16-64-128, SHA-256 */
 
 /**
- * \brief Set the EDHOC cipher suit 
+ * \brief Set the EDHOC cipher suit
  */
 #ifdef EDHOC_CONF_SUIT
 #define SUIT EDHOC_CONF_SUIT
@@ -145,7 +145,7 @@
 #endif
 
 /**
- * \brief COSE algorithm selection 
+ * \brief COSE algorithm selection
  */
 #ifdef EDHOC_CONF_ALGORITHM_ID
 #define ALGORITHM_ID EDHOC_CONF_ALGORITHM_ID
@@ -173,15 +173,36 @@
 #define RPL_NODE 0
 #endif
 
-/*Define type connection*/
-//#define TYPE_CON ((4 * METHOD) + CORR)
-
 /**
- * \brief Set the number of attempts to connect with the EDHOC server successfully 
+ * \brief Set the number of attempts to connect with the EDHOC server successfully
  */
 #ifndef EDHOC_CONF_ATTEMPTS
 #define EDHOC_CONF_ATTEMPTS 3
-#endif 
-#endif /* _EDHOC_CONFIG_H_ */
-/** @} */
+#endif
 
+/**
+ * \brief The max lenght of the EDHOC msg, as CoAP payload
+ */
+#ifdef EDHOC_CONF_MAX_PAYLOAD
+#define MAX_DATA_LEN EDHOC_CONF_MAX_PAYLOAD
+#else
+#define MAX_DATA_LEN 254
+#endif
+
+/**
+ * \brief The max lenght of the Aplication Data
+ */
+#ifdef EDHOC_CONF_MAX_AD_SZ
+#define MAX_AD_SZ EDHOC_CONF_MAX_AD_SZ
+#else
+#define MAX_AD_SZ 16
+#endif
+
+/**
+ * \brief EDHOC resource urti-path
+ */
+#define WELL_KNOWN ".well-known/edhoc"
+
+#endif /* _EDHOC_CONFIG_H_ */
+
+/** @} */

@@ -50,7 +50,6 @@
 #define LOG_LEVEL LOG_LEVEL_EDHOC
 #endif
 
-
 typedef struct bstr {
   uint8_t *buf;
   size_t len;
@@ -79,6 +78,7 @@ void print_char(char *buff, size_t len);
 #define LOG_WARN_EDHOC_BUFF(data, len) LOG_EDHOC_BUFF(LOG_LEVEL_WARN, data, len)
 #define LOG_INFO_EDHOC_BUFF(data, len) LOG_EDHOC_BUFF(LOG_LEVEL_INFO, data, len)
 #define LOG_DBG_EDHOC_BUFF(data, len)  LOG_EDHOC_BUFF(LOG_LEVEL_DBG, data, len)
+#define LOG_PRINT_EDHOC_BUFF(data, len)  LOG_EDHOC_BUFF(LOG_LEVEL_NONE, data, len)
 
 #define LOG_ERR_EDHOC_STR(data, len)  LOG_EDHOC_STR(LOG_LEVEL_ERR, data, len)
 #define LOG_WARN_EDHOC_STR(data, len) LOG_EDHOC_STR(LOG_LEVEL_WARN, data, len)
@@ -89,6 +89,11 @@ static inline void
 print_buff_8_dbg(uint8_t *buf, uint16_t len)
 {
   LOG_DBG_EDHOC_BUFF(buf, len);
+}
+static inline void
+print_buff_8_print(uint8_t *buf, uint16_t len)
+{
+  LOG_PRINT_EDHOC_BUFF(buf, len);
 }
 static inline void
 print_buff_8_info(uint8_t *buf, uint16_t len)

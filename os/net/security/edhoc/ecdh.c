@@ -31,8 +31,8 @@
 /**
  * \file
  *         ecdh, an interface between the ECC and Secure Hash Algorithms with the edhoc implementation.
- *         Interface the ECC key used library with the edhoc implementation. New ECC libraries can be include it here. 
- *         (UECC macro must be definded at config file) and with the CC2538 HW module 
+ *         Interface the ECC key used library with the edhoc implementation. New ECC libraries can be include it here.
+ *         (UECC macro must be definded at config file) and with the CC2538 HW module
  *         Interface the Secure Hash Algorithms SH256 with the edhoc implementation.
  *
  * \author
@@ -44,7 +44,7 @@
 #include <dev/watchdog.h>
 #include "sys/rtimer.h"
 #include "sys/process.h"
-//static rtimer_clock_t time;
+/*static rtimer_clock_t time; */
 
 #ifndef HKDF_INFO_MAXLEN
 #define HKDF_INFO_MAXLEN 255
@@ -57,20 +57,18 @@
 static uint8_t aggregate_buffer[HAS_LENGHT + HKDF_INFO_MAXLEN + 1];
 static uint8_t out_buffer[HKDF_OUTPUT_MAXLEN + HAS_LENGHT];
 
-
 uint8_t
-generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve)
+generate_IKM(uint8_t *gx, uint8_t *gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve)
 {
   int er = 0;
-  #if ECC == UECC   //use GX and Gy 
-    er = uecc_generate_IKM(gx,gy,private_key,ikm,curve);
-  #endif
-  #if ECC == CC2538
-    er = cc2538_generate_IKM(gx,gy,private_key,ikm,curve);
-  #endif  
+#if ECC == UECC_ECC     /*use GX and Gy */
+  er = uecc_generate_IKM(gx, gy, private_key, ikm, curve);
+#endif
+#if ECC == CC2538_ECC
+  er = cc2538_generate_IKM(gx, gy, private_key, ikm, curve);
+#endif
   return er;
 }
-
 static void
 hmac_sha256_init(hmac_context_t **ctx, const uint8_t *key, uint8_t key_sz)
 {
@@ -135,7 +133,7 @@ hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint
   /*Compose T(2) ... T(N) */
   memcpy(aggregate_buffer, &(out_buffer[0]), 32);
   for(int i = 1; i < N; i++) {
-    //LOG_INFO("sha-256 (%d)\n",i);
+    /*LOG_INFO("sha-256 (%d)\n",i); */
     hmac_sha256_reset(&ctx, prk, prk_sz);
 
     memcpy(&(aggregate_buffer[32]), info, info_sz);
@@ -152,12 +150,12 @@ hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint
 void
 generate_cose_key(ecc_key *key, cose_key *cose, char *identity, uint8_t id_sz)
 {
-  cose->kid = (bstr_cose){key->kid, key->kid_sz };
-  cose->identity = (sstr_cose){identity, id_sz };
+  cose->kid = (bstr_cose){ key->kid, key->kid_sz };
+  cose->identity = (sstr_cose){ identity, id_sz };
   cose->crv = KEY_CRV; /* P-256 */
   cose->kty = KEY_TYPE; /* EC2 */
-  cose->x = (bstr_cose){key->public.x, ECC_KEY_BYTE_LENGHT };
-  cose->y = (bstr_cose){key->public.y, ECC_KEY_BYTE_LENGHT };
+  cose->x = (bstr_cose){ key->public.x, ECC_KEY_BYTE_LENGHT };
+  cose->y = (bstr_cose){ key->public.y, ECC_KEY_BYTE_LENGHT };
 }
 void
 set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t curve)
@@ -165,7 +163,7 @@ set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t cur
   if(auth_key->kid_sz == 0) {
     LOG_DBG("kid_sz is 0 \n");
     key->kid_sz = 0;
-    memcpy(key->public.x, auth_key->x, ECC_KEY_BYTE_LENGHT );
+    memcpy(key->public.x, auth_key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(key->public.y, auth_key->y, ECC_KEY_BYTE_LENGHT);
   } else {
     key->kid_sz = auth_key->kid_sz;
@@ -174,5 +172,5 @@ set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t cur
     memcpy(key->public.y, auth_key->y, ECC_KEY_BYTE_LENGHT);
   }
   generate_cose_key(key, cose, auth_key->identity, auth_key->identity_sz);
-  LOG_DBG("Cose kid len (%d)\n",(int)cose->kid.len);
+  LOG_DBG("Cose kid len (%d)\n", (int)cose->kid.len);
 }

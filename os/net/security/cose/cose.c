@@ -71,7 +71,6 @@ cose_encrypt0_finalize(cose_encrypt0 *enc)
 {
   encrypt0_free(enc);
 }
-
 static char enc_rec[] = RECIPIENT;
 
 void
@@ -88,7 +87,6 @@ cose_print_key(cose_key *cose)
   LOG_DBG("y:");
   cose_print_buff_8_dbg(cose->y.buf, cose->y.len);
 }
-
 uint8_t
 cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key_sz, uint8_t *nonce, uint16_t nonce_sz)
 {
@@ -154,9 +152,9 @@ cose_decrypt(cose_encrypt0 *enc)
   LOG_DBG("protected:");
   cose_print_buff_8_dbg(enc->protected_header, enc->protected_header_sz);
   enc_structure str = {
-    .str_id = (sstr_cose){enc_rec, sizeof(enc_rec) }, /*Encrypt0 */
-    .protected = (bstr_cose){enc->protected_header, enc->protected_header_sz }, /*empty */
-    .external_aad = (bstr_cose){enc->external_aad, enc->external_aad_sz }, /* OLD REF TH@ */
+    .str_id = (sstr_cose){ enc_rec, sizeof(enc_rec) }, /*Encrypt0 */
+    .protected = (bstr_cose){ enc->protected_header, enc->protected_header_sz }, /*empty */
+    .external_aad = (bstr_cose){ enc->external_aad, enc->external_aad_sz }, /* OLD REF TH@ */
   }; /* the enc estructure have tha autetification data */
 
   uint8_t str_encode[2 * COSE_MAX_BUFFER];
@@ -208,9 +206,9 @@ cose_encrypt(cose_encrypt0 *enc)
   cose_print_buff_8_dbg(enc->protected_header, enc->protected_header_sz);
 
   enc_structure str = {
-    .str_id = (sstr_cose){enc_rec, sizeof(enc_rec) }, /*Encrypt0 */
-    .protected = (bstr_cose){enc->protected_header, enc->protected_header_sz }, /*empty */
-    .external_aad = (bstr_cose){enc->external_aad, enc->external_aad_sz }, /* OLD REF TH@ */
+    .str_id = (sstr_cose){ enc_rec, sizeof(enc_rec) }, /*Encrypt0 */
+    .protected = (bstr_cose){ enc->protected_header, enc->protected_header_sz }, /*empty */
+    .external_aad = (bstr_cose){ enc->external_aad, enc->external_aad_sz }, /* OLD REF TH@ */
   }; /* the enc estructure have tha autetification data */
 
   uint8_t str_encode[2 * COSE_MAX_BUFFER];

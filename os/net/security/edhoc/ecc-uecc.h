@@ -55,11 +55,10 @@ typedef struct point_affine {
 } ecc_point_a;
 typedef struct ecc_key {
   uint8_t kid[4];
-  //uint8_t* kid;
   uint8_t kid_sz;
   uint8_t private_key[ECC_KEY_BYTE_LENGHT];
   ecc_point_a public;
-  char * identity;
+  char *identity;
   uint8_t identity_size;
 } ecc_key;
 
@@ -69,7 +68,6 @@ typedef struct ecc_curve_t {
 
 uint8_t uecc_generate_key(ecc_key *key, ecc_curve_t curve);
 void uecc_uncompress(uint8_t *compressed, uint8_t *gx, uint8_t *gy, ecc_curve_t *curve);
-uint8_t uecc_generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
+uint8_t uecc_generate_IKM(uint8_t *gx, uint8_t *gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
 
-
-#endif 
+#endif

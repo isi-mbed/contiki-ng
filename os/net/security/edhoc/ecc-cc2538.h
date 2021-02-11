@@ -30,14 +30,14 @@
 
 /**
  * \file
- *         ecc-ccc2538 headers  
- * 
+ *         ecc-ccc2538 headers
+ *
  * \author
  *         Lidia Pocero <pocero@isi.gr>
  */
 #ifndef _ECC_CC2538_H_
 #define _ECC_CC2538_H_
-
+#if uECC
 #include <stdint.h>
 #include "lib/random.h"
 #include <string.h>
@@ -56,60 +56,52 @@ typedef struct point_affine {
   uint8_t y[ECC_KEY_BYTE_LENGHT];
 } ecc_point_a;
 
-
 typedef struct ecc_key {
   uint8_t kid[4];
-  //uint8_t* kid;
   uint8_t kid_sz;
   uint8_t private_key[ECC_KEY_BYTE_LENGHT];
   ecc_point_a public;
-  char * identity;
+  char *identity;
   uint8_t identity_size;
 } ecc_key;
 typedef struct  {
   /* Containers for the State */
-  struct pt      pt;
+  struct pt pt;
   struct process *process;
 
   /* Input Variables */
   ecc_curve_info_t *curve_info; /**< Curve defining the CyclicGroup */
 
-  uint32_t         rv;          /**< Address of Next Result in PKA SRAM */
-  uint32_t    len;  
+  uint32_t rv;                  /**< Address of Next Result in PKA SRAM */
+  uint32_t len;
   /* Output Variables */
-  uint8_t  result;           /**< Result Code */
-  /*uint32_t public[16];
-  uint32_t compressed[8]; 
-  uint32_t * y;
-  uint8_t comp;*/
-
+  uint8_t result;            /**< Result Code */
   uint8_t public[64];
-  uint8_t compressed[33]; 
-
+  uint8_t compressed[33];
 } ecc_key_uncompress_t;
 
-PT_THREAD(ecc_decompress_key(ecc_key_uncompress_t *state));
-
+PT_THREAD(ecc_decompress_key(ecc_key_uncompress_t * state));
 
 typedef struct  {
   /* Containers for the State */
-  struct pt      pt;
+  struct pt pt;
   struct process *process;
 
   ecc_curve_info_t *curve_info; /**< Curve defining the CyclicGroup */
   /* Output Variables */
   uint8_t x[32];           /**< Result Code */
   uint8_t y[32];
-  uint8_t private[32]; 
+  uint8_t private[32];
 } key_gen_t;
 
-PT_THREAD(generate_key_hw(key_gen_t *key)); 
+PT_THREAD(generate_key_hw(key_gen_t * key));
 
 typedef struct ecc_curve_t {
   ecc_curve_info_t *curve;
 }ecc_curve_t;
 
-uint8_t cc2538_generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
-void compress_key_hw(uint8_t *compressed,uint8_t *public,  ecc_curve_info_t *curve);
+uint8_t cc2538_generate_IKM(uint8_t *gx, uint8_t *gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
+void compress_key_hw(uint8_t *compressed, uint8_t *public, ecc_curve_info_t *curve);
 
+#endif
 #endif /* _ECDH_H_ */

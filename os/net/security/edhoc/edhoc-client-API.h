@@ -37,7 +37,7 @@
  */
 
 /**
- * \addtogroup edhoc 
+ * \addtogroup edhoc
  * @{
  */
 
@@ -51,9 +51,6 @@
 #include "coap-callback-api.h"
 #include "coap-blocking-api.h"
 
-
-
-
 /**
  * \brief The CoAp Server IP where run the EDHOC Responder
  */
@@ -64,36 +61,13 @@
 #endif
 
 /**
- * \brief The max lenght of the EDHOC msg, as CoAP payload
- */
-#ifdef EDHOC_CONF_MAX_PAYLOAD
-#define MAX_DATA_LEN EDHOC_CONF_MAX_PAYLOAD
-#else
-#define MAX_DATA_LEN 64
-#endif
-
-/**
- * \brief The max lenght of the Aplication Data
- */
-#ifdef EDHOC_CONF_MAX_AD_SZ
-#define MAX_AD_SZ EDHOC_CONF_MAX_AD_SZ
-#else
-#define MAX_AD_SZ 16
-#endif
-
-/**
- * \brief Limite time value to EDHOC protocol finished 
+ * \brief Limite time value to EDHOC protocol finished
  */
 #ifdef EDHOC_CONF_TIMEOUT
 #define CL_TIMEOUT_VAL EDHOC_CONF_TIMEOUT
 #else
 #define CL_TIMEOUT_VAL 10000
 #endif
-
-/**
- * \brief EDHOC resource urti-path
- */
-#define WELL_KNOWN ".well-known/edhoc"
 
 /**
  * \brief EDHOC client struct
@@ -137,33 +111,33 @@ edhoc_context_t *ctx;
 
 /**
  * \brief Run the EDHOC Initiator part
- * 
- *  This function must be called from the EDHOC Initiator program to start the EDHOC protocol 
+ *
+ *  This function must be called from the EDHOC Initiator program to start the EDHOC protocol
  *  as Initiator. Run a new process that implements all the EDHOC protocol and exit
- *  when the EDHOC protocol finishes successfully or expire the EDHOC_CONF_ATTEMPTS. 
+ *  when the EDHOC protocol finishes successfully or expire the EDHOC_CONF_ATTEMPTS.
  *  - When the EDHOC protocol finishes successfully a CL_FINISHED event is triggered.
  *  - When the EDHOC protocol expires the EDHOC_CONF_ATTEMPTS attempts a CL_TRIES_EXPIRE event is triggered
-*/
+ */
 void edhoc_client_run();
 
 /**
  * \brief Check if the EDHOC client have finished
- * \param ev process event 
+ * \param ev process event
  * \param data process data
  * \retval 1 if EDHOC Client process finished success
  * \retval -1 if EDHOC Client process expire attempts
  * \retval 0 if the event is not from EDHOC Client process or the EDHOC client process has not finished yet
- * 
- *  This function checks the events trigger from the EDHOC client process looking for the 
- *  CL_FINSHED or CL_TRIES_EXPIRE events. 
+ *
+ *  This function checks the events trigger from the EDHOC client process looking for the
+ *  CL_FINSHED or CL_TRIES_EXPIRE events.
  */
 int8_t edhoc_client_callback(process_event_t ev, void *data);
 
 /**
- * \brief Close the EDHOC context 
- * 
- * This function must be called after the Security Context is exported to liberate the 
- * allocated memory. 
+ * \brief Close the EDHOC context
+ *
+ * This function must be called after the Security Context is exported to liberate the
+ * allocated memory.
  */
 void edhoc_client_close();
 
@@ -171,29 +145,28 @@ void edhoc_client_close();
  * \brief Get the Application Data received in EDHOC message 2
  * \param buff A pointer to a buffer to copy the Application data
  * \return ad_sz The Application data length
- * 
+ *
  * This function copy on the buff the Application data from the EDHOC message 2 received
  */
-uint8_t  edhoc_server_get_ad_2(char * buff);
+uint8_t  edhoc_server_get_ad_2(char *buff);
 
 /**
  * \brief Set the Application Data to be carried on EDHOC message 1
  * \param buff A pointer to a buffer that contains the Application data to be copied
  * \param buff_sz The Application data length
- * 
+ *
  * This function set the Application data to be carried on EDHOC message 1
  */
-void edhoc_server_set_ad_1(const void * buff, uint8_t buff_sz);
+void edhoc_server_set_ad_1(const void *buff, uint8_t buff_sz);
 
 /**
  * \brief Set the Application Data to be carried on EDHOC message 3
  * \param buff A pointer to a buffer that contains the Application data to be copied
  * \param buff_sz The Application data length
- * 
+ *
  * This function set the Application data to be carried on EDHOC message 3
  */
-void edhoc_server_set_ad_3(const void * buff, uint8_t buff_sz);
-
+void edhoc_server_set_ad_3(const void *buff, uint8_t buff_sz);
 
 #endif /* _EDHOC_CLIENT_API_H_ */
 /** @} */

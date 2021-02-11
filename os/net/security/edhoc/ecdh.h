@@ -47,12 +47,11 @@
 #include "hmac-sha.h"
 
 /*Choose the ECC library to be used*/
-#define ECC_CC2258 1
-#define UECC 2
-#define TEST_TOTAL 0
+#define CC2258_ECC 1
+#define UECC_ECC 2
 #define TEST_VECTOR 1
 
-#ifdef EDHOC_TEST 
+#ifdef EDHOC_TEST
 #define TEST EDHOC_TEST
 #else
 #define TEST TEST_TOTAL
@@ -64,7 +63,7 @@
 #ifdef EDHOC_CONF_ECC
 #define ECC EDHOC_CONF_ECC
 #else
-#define ECC UECC
+#define ECC UECC_ECC
 #endif
 
 #ifdef EDHOC_CONF_MAX_PAYLOAD
@@ -74,16 +73,13 @@
 #endif
 #define MAX_KEY MAX_PAYLOAD
 
-
-#if ECC == UECC
+#if ECC == UECC_ECC
 #include "ecc-uecc.h"
 #endif
 
-#if ECC == CC2538
+#if ECC == CC2538_ECC
 #include "ecc-cc2538.h"
 #endif
-
-
 
 typedef struct session_key {
   uint8_t k2_e[MAX_KEY];
@@ -95,9 +91,8 @@ typedef struct session_key {
   uint8_t th[ECC_KEY_BYTE_LENGHT];
 } session_key;
 
-
-uint8_t generate_IKM(uint8_t *gx, uint8_t* gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
-uint8_t compute_TH(uint8_t *in, uint8_t in_sz, uint8_t *hash, uint8_t hash_sz);
+uint8_t generate_IKM(uint8_t *gx, uint8_t *gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
+uint8_t compute_TH(uint8_t * in, uint8_t in_sz, uint8_t *hash, uint8_t hash_sz);
 uint8_t hkdf_extrac(uint8_t *salt, uint8_t salt_sz, uint8_t *ikm, uint8_t ikm_sz, uint8_t *hmac);
 int8_t hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint8_t *okm, uint16_t okm_sz);
 void generate_cose_key(ecc_key *key, cose_key *cose, char *identity, uint8_t id_sz);
