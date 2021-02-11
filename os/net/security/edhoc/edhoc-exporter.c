@@ -56,14 +56,14 @@ gen_th4(edhoc_context_t *ctx)
   uint8_t *ptr = h4;
   uint8_t h4_sz = cbor_put_bytes(&ptr, ctx->session.th.buf, ctx->session.th.len);
   h4_sz += cbor_put_bytes(&ptr, ctx->session.ciphertex_3.buf, ctx->session.ciphertex_3.len);
-  LOG_INFO("Input to calculate TH_4 (CBOR Sequence) (%d bytes)", h4_sz);
+  LOG_INFO("Input to calculate TH_4 (CBOR Sequence) (%d bytes)",(int)h4_sz);
   print_buff_8_info(h4, h4_sz);
   uint8_t er = compute_TH(h4, h4_sz, ctx->session.th.buf, ctx->session.th.len);
   if(er != 0) {
     LOG_ERR("ERR COMPUTED TH4\n ");
     return ERR_CODE;
   }
-  LOG_INFO("TH4 (%d bytes):", ctx->session.th.len);
+  LOG_INFO("TH4 (%d bytes):",(int)ctx->session.th.len);
   print_buff_8_info(ctx->session.th.buf, ctx->session.th.len);
   return er;
 }

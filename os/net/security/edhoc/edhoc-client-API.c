@@ -309,13 +309,9 @@ PROCESS_THREAD(edhoc_client_protocol, ev, data)
     time = RTIMER_NOW();
     if(er > 0) {
       er = edhoc_get_auth_key(ctx, &pt, &key);
-      LOG_DBG("ID_CRED_X in client API (%d)", ctx->session.id_cred_x.len);
-      print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
     }
 
     if(er > 0) {
-      LOG_DBG("ID_CRED_X in client API (%d)", ctx->session.id_cred_x.len);
-      print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
       er = edhoc_authenticate_msg(ctx, &pt, msg2.cipher.len, (uint8_t *)edhoc_state.ad.ad_2, &key);
     }
     time = RTIMER_NOW() - time;
