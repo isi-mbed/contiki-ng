@@ -293,6 +293,18 @@ edhoc_client_post_blocks()
     return 1;
   }
 }
+static int 
+edhoc_send_msg1(uint8_t *ad, uint8_t ad_sz, bool suit_array){
+  LOG_INFO("--------------Generate message_1------------------\n");
+  time = RTIMER_NOW();
+  edhoc_gen_msg_1(ctx, ad, ad_sz, suit_array);
+  time = RTIMER_NOW() - time;
+  LOG_PRINT("Client time to gen MSG1: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t)time * 1000 / RTIMER_SECOND), (uint32_t)time);
+  time = RTIMER_NOW();
+  edhoc_client_post(&cli->server_ep, state.state.request, ctx->msg_tx, ctx->tx_sz);
+  cli->state = RX_MSG2;
+  return edhoc_client_post_blocks();  
+}
 PROCESS_THREAD(edhoc_client_protocol, ev, data)
 {
   PROCESS_BEGIN();
@@ -307,7 +319,11 @@ PROCESS_THREAD(edhoc_client_protocol, ev, data)
     time = RTIMER_NOW() - time;
     LOG_PRINT("Client time to handler MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t)time * 1000 / RTIMER_SECOND), (uint32_t)time);
     time = RTIMER_NOW();
-    if(er > 0) {
+    if(er == ERR_RESEND_MSG_1){
+       edhoc_send_msg1((uint8_t*) edhoc_state.ad.ad_1, edhoc_state.ad.ad_1_sz, true);
+       break;
+    }
+    else if(er > 0) {
       er = edhoc_get_auth_key(ctx, &pt, &key);
     }
 
@@ -395,6 +411,7 @@ edhoc_client_init()
   state.state.response = cli->response;
   state.state.remote_endpoint = &cli->server_ep;
 }
+
 static int
 edhoc_client_start(uint8_t *ad, uint8_t ad_sz)
 {
@@ -404,8 +421,10 @@ edhoc_client_start(uint8_t *ad, uint8_t ad_sz)
 
   coap_timer_set_callback(&timer, client_timeout_callback);
   coap_timer_set(&timer, CL_TIMEOUT_VAL);
+  
+  return edhoc_send_msg1(ad,ad_sz,false);
 
-  LOG_INFO("--------------Generate message_1------------------\n");
+  /*LOG_INFO("--------------Generate message_1------------------\n");
   time = RTIMER_NOW();
   edhoc_gen_msg_1(ctx, ad, ad_sz);
   time = RTIMER_NOW() - time;
@@ -413,7 +432,7 @@ edhoc_client_start(uint8_t *ad, uint8_t ad_sz)
   time = RTIMER_NOW();
   edhoc_client_post(&cli->server_ep, state.state.request, ctx->msg_tx, ctx->tx_sz);
   cli->state = RX_MSG2;
-  return edhoc_client_post_blocks();
+  return edhoc_client_post_blocks();*/
 }
 void
 edhoc_client_close()

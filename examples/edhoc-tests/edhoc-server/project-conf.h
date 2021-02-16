@@ -20,7 +20,7 @@
 #define EDHOC_CONF_CORR EXTERNAL_CORR_U 
 
 /*To run with the test vector DH ephimeral keys used on the edhoc-v02 interoperability sesion*/
-//#define EDHOC_TEST TEST_VECTOR
+#define EDHOC_TEST TEST_VECTOR
 
 /*Define the authentication method*/
 //#define EDHOC_CONF_AUTHENT_TYPE PRKI_2
@@ -35,11 +35,17 @@
 #define EDHOC_CONF_ECC CC2538_ECC
 //#define EDHOC_CONF_ECC UECC_ECC
 
+
+/*#define EDHOC_CONF_SUIT  X25519_2
+#define EDHOC_CONF_SUIT_1 P256_2
+#define EDHOC_CONF_SUIT_2 P256*/
+
+
 /*To run EDHOC server as RPL node*/
 //#define EDHOC_CONF_RPL_NODE 1
 
 /* Definde the node as Border Router*/
-#ifndef WEBSERVER_CONF_CFS_CONNS
+/*#ifndef WEBSERVER_CONF_CFS_CONNS
 #define WEBSERVER_CONF_CFS_CONNS 2
 #endif
 
@@ -49,14 +55,14 @@
 
 #if BORDER_ROUTER_CONF_WEBSERVER
 #define UIP_CONF_TCP 1
-#endif
+#endif*/
 
 /*May be necesary to defind one of the following macros when the UECC_ECC library is used and 
 the target is an embedded device*/ 
 //#define WATCHDOG_CONF_ENABLE 0x00000000
 //#define SYS_CTRL_CONF_SYS_DIV SYS_CTRL_CLOCK_CTRL_SYS_DIV_32MHZ
 
-#define LOG_CONF_LEVEL_EDHOC LOG_LEVEL_INFO
+#define LOG_CONF_LEVEL_EDHOC LOG_LEVEL_DBG
 //#define LOG_CONF_LEVEL_COAP LOG_LEVEL_DBG
 /*#define LOG_CONF_LEVEL_TCPIP LOG_LEVEL_DBG */
 //#define LOG_CONF_LEVEL_IPV6 LOG_LEVEL_DBG 

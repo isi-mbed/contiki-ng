@@ -120,29 +120,58 @@
 /*#define AUTHENTICATION_KEY_LEN 32 //For Signature key, not yet implemented*/
 
 /*cipher suit */
-#define X25519 0  /*AES-CCM-16-64-128, (HMAC 256/256) SHA-256, X25519, EdDSA, Ed25519, AES-CCM-16-64-128, SHA-256  //no implemented yet * / */
-/*#define X25519_2 1  //AES-CCM-16-128-128,(HMAC 256/256) SHA-256, X25519, EdDSA, Ed25519, AES-CCM-16-64-128, SHA-256 */
+#define X25519 0 /*AES-CCM-16-64-128, (HMAC 256/256) SHA-256, X25519, EdDSA, Ed25519, AES-CCM-16-64-128, SHA-256  //no implemented yet * / */
+#define X25519_2 1  /*AES-CCM-16-128-128,(HMAC 256/256) SHA-256, X25519, EdDSA, Ed25519, AES-CCM-16-64-128, SHA-256 */
 #define P256 2    /*AES-CCM-16-64-128, (HMAC 256/256) SHA-256, P-256, ES256, P-256, AES-CCM-16-64-128, SHA-256 */
-/*#define P256_2 3    //AES-CCM-16-64-128, (HMAC 256/256) SHA-256, P-256, ES256, P-256, AES-CCM-16-64-128, SHA-256 */
+#define P256_2 3    /*AES-CCM-16-64-128, (HMAC 256/256) SHA-256, P-256, ES256, P-256, AES-CCM-16-64-128, SHA-256 */
 
 /**
  * \brief Set the EDHOC cipher suit
  */
+
+#ifndef EDHOC_MAX_SUITS 
+#define EDHOC_MAX_SUITS 5
+#endif
+
 #ifdef EDHOC_CONF_SUIT
 #define SUIT EDHOC_CONF_SUIT
 #else
 #define SUIT P256
 #endif
 
+#ifdef EDHOC_CONF_SUIT_1
+#define SUIT_1 EDHOC_CONF_SUIT_1
+#else
+#define SUIT_1 -1
+#endif
+#ifdef EDHOC_CONF_SUIT_2
+#define SUIT_2 EDHOC_CONF_SUIT_2
+#else
+#define SUIT_2 -1
+#endif
+#ifdef EDHOC_CONF_SUIT_3
+#define SUIT_3 EDHOC_CONF_SUIT_3
+#else
+#define SUIT_3 -1
+#endif
+#ifdef EDHOC_CONF_SUIT_4
+#define SUIT_4 EDHOC_CONF_SUIT_4
+#else
+#define SUIT_4 -1
+#endif
+
 /*Set COSE_Key parameter*/
-#if (SUIT == P256)
+//#if (SUIT == P256)
 #define KEY_CRV 1
 #define KEY_TYPE EC2 /*EC2 key */
-#endif
-#if (SUIT == X25519)
-#define KEY_CRV 4
-#define KEY_TYPE OKP /*EC2 key */
-#endif
+//#endif
+//#if (SUIT == X25519)
+//#define KEY_CRV 1
+//#define KEY_TYPE EC2 /*EC2 key */
+
+//#define KEY_CRV 4
+//#define KEY_TYPE OKP /*EC2 key */
+//#endif
 
 /**
  * \brief COSE algorithm selection

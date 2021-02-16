@@ -59,11 +59,16 @@
 #define RX_ERR_MSG -1
 #define ERR_TIMEOUT -12
 #define ERR_CORELLATION -13
+#define ERR_NEW_SUIT_PROPOSE -14
+#define ERR_RESEND_MSG_1 -15
 
 /*NEW RFC */
 typedef struct edhoc_msg_1 {
   uint8_t method;   /* method correlation */
-  uint8_t suit_U;   /*cipher suit. uniq value for us. generally an array of possible suits */
+  //uint8_t suit_U[5];
+
+  bstr suit_I;
+  //uint8_t suit_U;   /*cipher suit. uniq value for us. generally an array of possible suits */
   bstr Gx;   /*x cordinato of ephemeral key of party U */
   bstr Ci;   /*random number for connection id CU */
   bstr uad;   /*? unprotected aplication data */
@@ -95,14 +100,14 @@ typedef struct edhoc_msg_error {
   bstr Cx;   /*? */
   sstr err;   /* text byte with the error mesagge */
   bstr suit;
-  uint8_t suit_num;
+  //uint8_t suit_;
 } edhoc_msg_error;
 
 void print_msg_1(edhoc_msg_1 *msg);
 void print_msg_2(edhoc_msg_2 *msg);
 void print_msg_3(edhoc_msg_3 *msg);
 
-size_t edhoc_serialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer);
+size_t edhoc_serialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, bool suit_array);
 size_t edhoc_serialize_data_2(edhoc_data_2 *msg, unsigned char *buffer);
 size_t edhoc_serialize_data_3(edhoc_data_3 *msg, unsigned char *buffer);
 size_t edhoc_serialize_err(edhoc_msg_error *msg, unsigned char *buffer);
@@ -119,6 +124,7 @@ uint8_t edhoc_get_ad(uint8_t **p, uint8_t *ad);
 uint8_t edhoc_get_byte_identifier(uint8_t **in);
 uint8_t edhoc_get_maps_num(uint8_t **in);
 size_t edhoc_get_bytes(uint8_t **in, uint8_t **out);
-uint8_t edhoc_get_unsigned(uint8_t **in);
+int16_t edhoc_get_unsigned(uint8_t **in);
+uint8_t edhoc_get_array_num(uint8_t **in);
 
 #endif

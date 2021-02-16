@@ -116,6 +116,9 @@ edhoc_server_restart()
   serv->rx_msg1 = false;
   serv->rx_msg3 = false;
   serv->state = NON_MSG;
+  memset(&server, 0, sizeof(edhoc_server_t));
+  //memset(&ctx,0,sizeof(edhoc_context_t));
+  edhoc_init(ctx);
   return edhoc_get_authentication_key(ctx);
 }
 uint8_t
@@ -198,10 +201,12 @@ PROCESS_THREAD(edhoc_server, ev, data){
         LOG_WARN("Send MSG error with code (%d)\n", er);
         ctx->tx_sz = edhoc_gen_msg_error(ctx->msg_tx, ctx, er);
         serv->state = TX_MSG_ERR;
-        coap_timer_stop(&timer);
-        edhoc_server_close();
-        new_ecc.val = SERV_RESTART;
-        process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
+        if(er != ERR_NEW_SUIT_PROPOSE){
+          coap_timer_stop(&timer);
+          edhoc_server_close();
+          new_ecc.val = SERV_RESTART;
+          process_post(PROCESS_BROADCAST, new_ecc_event, &new_ecc);
+        }
       } else {
         /* Set the 5-tuple ipaddres to identify the connection */
         memcpy(&serv->con_ipaddr, &request->src_ep->ipaddr, sizeof(uip_ipaddr_t));

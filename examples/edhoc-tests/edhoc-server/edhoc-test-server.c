@@ -136,9 +136,9 @@ PROCESS_THREAD(edhoc_example_server, ev, data)
   };
   PT_SPAWN(&edhoc_example_server.pt, &key.pt, generate_key_hw(&key));
 
-  print_buff_8_dbg(key.x, ECC_KEY_BYTE_LENGHT);
+  /*print_buff_8_dbg(key.x, ECC_KEY_BYTE_LENGHT);
   print_buff_8_dbg(key.y, ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(key.private, ECC_KEY_BYTE_LENGHT);
+  print_buff_8_dbg(key.private, ECC_KEY_BYTE_LENGHT);*/
   memcpy(ctx->ephimeral_key.public.x, key.x, ECC_KEY_BYTE_LENGHT);
   memcpy(ctx->ephimeral_key.public.y, key.y, ECC_KEY_BYTE_LENGHT);
   memcpy(ctx->ephimeral_key.private_key, key.private, ECC_KEY_BYTE_LENGHT);
@@ -193,9 +193,9 @@ PROCESS_THREAD(edhoc_example_server, ev, data)
       };
       PT_SPAWN(&edhoc_example_server.pt, &key.pt, generate_key_hw(&key));
 
-      print_buff_8_dbg(key.x, ECC_KEY_BYTE_LENGHT);
+     /* print_buff_8_dbg(key.x, ECC_KEY_BYTE_LENGHT);
       print_buff_8_dbg(key.y, ECC_KEY_BYTE_LENGHT);
-      print_buff_8_dbg(key.private, ECC_KEY_BYTE_LENGHT);
+      print_buff_8_dbg(key.private, ECC_KEY_BYTE_LENGHT);*/
       memcpy(ctx->ephimeral_key.public.x, key.x, ECC_KEY_BYTE_LENGHT);
       memcpy(ctx->ephimeral_key.public.y, key.y, ECC_KEY_BYTE_LENGHT);
       memcpy(ctx->ephimeral_key.private_key, key.private, ECC_KEY_BYTE_LENGHT);

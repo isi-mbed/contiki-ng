@@ -68,14 +68,32 @@ edhoc_storage_init(void)
 {
   memb_init(&edhoc_context_storage);
 }
-static void
-init(edhoc_context_t *ctx)
+void
+edhoc_init(edhoc_context_t *ctx)
 {
   /*TO DO : check that the key is belown to the curve */
   ctx->session.cid = EDHOC_CID;
-  ctx->session.suit = SUIT;
-  ctx->session.part = PART;  /*iniciator I (U) or receiver (V) */
+  ctx->session.suit[0] = SUIT;
+  ctx->session.suit_num = 1;
+  ctx->session.suit[1] = SUIT_1;
+  if(SUIT_1 > -1) ctx->session.suit_num++;
+  ctx->session.suit[2] = SUIT_2;  
+  if(SUIT_2 > -1) ctx->session.suit_num++;
+  ctx->session.suit[3] = SUIT_3; 
+  if(SUIT_3 > -1) ctx->session.suit_num++;
+  ctx->session.suit[4] = SUIT_4;
+  if(SUIT_4 > -1) ctx->session.suit_num++;
+ 
+  LOG_DBG("Suit:");
+  print_buff_8_dbg(ctx->session.suit,ctx->session.suit_num);
+  print_buff_8_dbg(ctx->session.suit,EDHOC_MAX_SUITS);
+/*  ctx->session.suit[2] = EDHOC_CONF_SUIT_2;
+  ctx->session.suit[3] = EDHOC_CONF_SUIT_3;
+  ctx->session.suit[4] = EDHOC_CONF_SUIT_4;*/
+  
+  ctx->session.part = PART;  /*iniciator I (U) or responder (V) */
   ctx->session.method = (4 * METHOD) + CORR; /*the method we use is: 4*METHOD+CORR */
+  ctx->session.suit_rx = 0xff;
 }
 edhoc_context_t *
 edhoc_new()
@@ -83,7 +101,7 @@ edhoc_new()
   edhoc_context_t *ctx;
   ctx = context_new();
   if(ctx) {
-    init(ctx);
+   edhoc_init(ctx);
   }
   return ctx;
 }
@@ -203,16 +221,84 @@ set_rx_cid(edhoc_context_t *ctx, uint8_t *cidrx, uint8_t cidrx_sz)
   }
 }
 static int8_t
-check_rx_suit(edhoc_context_t *ctx, uint8_t suitrx)
+check_rx_suit_I(edhoc_context_t *ctx, bstr suitrx)
 {
   /*Verify the selected cipher suit */
-  if(suitrx != SUIT) {
+  //uint8_t num_suit = 0;
+  /*while((suitrx.len > 1)  && num_suit < EDHOC_MAX_SUITS ){
+    num_suit++;
+  }*/
+  //uint8_t i = 0;
+  LOG_DBG("suits R before:");
+  print_buff_8_dbg(ctx->session.suit,ctx->session.suit_num);
+  
+  LOG_DBG("suits I before:");
+  print_buff_8_dbg(suitrx.buf,suitrx.len);
+
+  LOG_DBG("suits RX (%d)", ctx->session.suit_rx);
+  //print_buff_8_dbg(suitrx.buf,suitrx.len);
+
+  uint8_t x = 0;
+  for(x = 0; x < suitrx.len; x++){
+    if (suitrx.buf[0] == ctx->session.suit[x]){
+      ctx->session.suit[0] = suitrx.buf[0];
+      ctx->session.suit_rx = suitrx.buf[0];
+      break;
+    }
+  }
+  LOG_DBG("suits R:");
+  print_buff_8_dbg(ctx->session.suit,ctx->session.suit_num);
+
+  LOG_DBG("suits I before:");
+  print_buff_8_dbg(suitrx.buf,suitrx.len);
+  
+  if((ctx->session.suit[0] != ctx->session.suit_rx)){
+    LOG_WARN("ERR_NEW_SUIT_PROPOSE");
+    return ERR_NEW_SUIT_PROPOSE;  
+  }
+  else if((suitrx.buf[0] != ctx->session.suit_rx) && (suitrx.len > 1)) {
     LOG_ERR("error code (%d)\n ", ERR_SUIT_NON_SUPPORT);
     return ERR_SUIT_NON_SUPPORT;
   }
-  ctx->session.suit_rx = suitrx;
+  //ctx->session.suit_rx[0] = suitrx;*/
   return 0;
 }
+/*static int8_t
+check_rx_suit_I(edhoc_context_t *ctx, bstr suitrx)
+{
+  
+  //uint8_t i = 0;
+  LOG_DBG("suits R before:");
+  print_buff_8_dbg(ctx->session.suit,ctx->session.suit_num);
+  
+  LOG_DBG("suits I before:");
+  print_buff_8_dbg(suitrx.buf,suitrx.len);
+
+  uint8_t x = 0;
+  for(x = 0; x < suitrx.len; x++){
+    if (suitrx.buf[0] == ctx->session.suit[x]){
+      ctx->session.suit[0] = suitrx.buf[0];
+      ctx->session.suit_rx = suitrx.buf[0];
+      break;
+    }
+  }
+  LOG_DBG("suits R:");
+  print_buff_8_dbg(ctx->session.suit,ctx->session.suit_num);
+
+  LOG_DBG("suits I before:");
+  print_buff_8_dbg(suitrx.buf,suitrx.len);
+  
+  if((ctx->session.suit[0] != ctx->session.suit_rx)){
+    LOG_WARN("ERR_NEW_SUIT_PROPOSE");
+    return ERR_NEW_SUIT_PROPOSE;  
+  }
+  else if((suitrx.buf[0] != ctx->session.suit[0]) && (suitrx.len == 1)) {
+    LOG_ERR("error code (%d)\n ", ERR_SUIT_NON_SUPPORT);
+    return ERR_SUIT_NON_SUPPORT;
+  }
+  //ctx->session.suit_rx[0] = suitrx;
+  return 0;
+}*/
 void
 set_rx_gx(edhoc_context_t *ctx, uint8_t *gx)
 {
@@ -242,7 +328,7 @@ print_connection(edhoc_session *con)
   LOG_DBG("Conection print\n");
   LOG_DBG("connectin part: %d\n", (int)con->part);
   LOG_DBG("connectin method: %d\n", (int)con->method);
-  LOG_DBG("My suit: %d\n", con->suit);
+  LOG_DBG("My suit: %d\n", con->suit[0]);
   LOG_DBG("Other part suit: %d\n", (int)con->suit_rx);
   LOG_DBG("My cID: %x\n", (int)con->cid);
   LOG_DBG("Other part cID: %x\n", (int)con->cid_rx);
@@ -612,7 +698,7 @@ gen_plaintext(uint8_t *buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   uint8_t num = edhoc_get_maps_num(&pint);
   uint16_t size = 0;
   if(num == 1) {
-    num = edhoc_get_unsigned(&pint);
+    num = (uint8_t)edhoc_get_unsigned(&pint);
     size = edhoc_get_bytes(&pint, &pout);
 
     if(size < 0) {
@@ -737,25 +823,30 @@ edhoc_get_authentication_key(edhoc_context_t *ctx)
   return 0;
 }
 void
-edhoc_gen_msg_1(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
+edhoc_gen_msg_1(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz, bool suit_array)
 {
   /*Generate message 1 */
-  edhoc_msg_1 msg1 = { 0, 0, { NULL, 0 }, { NULL, 0 }, { NULL, 0 } };
+  edhoc_msg_1 msg1 = { 0, { NULL, 0 },{ NULL, 0 }, { NULL, 0 }, { NULL, 0 } };
   msg1.method = ctx->session.method;
-  msg1.suit_U = ctx->session.suit;
-  msg1.Gx = (bstr){ (uint8_t *)&ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT };
+  msg1.suit_I.buf = ctx->session.suit;
+  msg1.suit_I.len = ctx->session.suit_num; 
+  //memcpy(msg1.suit_U,ctx->session.suit,ctx->session.suit_num);
+  LOG_DBG("suit U (%d):", ctx->session.suit_num);
+  print_buff_8_dbg(msg1.suit_I.buf,msg1.suit_I.len);
+  //msg1.suit_U[0] = ctx->session.suit;
+  msg1.Gx = (bstr){ (uint8_t *)&ctx->ephimeral_key.public.x, ECC_KEY_BYTE_LENGHT};
   msg1.Ci = (bstr){ (uint8_t *)&ctx->session.cid, int_sz(ctx->session.cid) };
   msg1.uad = (bstr){ ad, ad_sz };
 
   /*cbor encode message on the buffer */
-  size_t size = edhoc_serialize_msg_1(&msg1, ctx->msg_tx);
+  size_t size = edhoc_serialize_msg_1(&msg1, ctx->msg_tx, suit_array);
   ctx->tx_sz = size;
 
   LOG_INFO("C_I choosen by Initiator (%d bytes): 0x", (int)msg1.Ci.len);
   print_buff_8_info(msg1.Ci.buf, msg1.Ci.len);
   LOG_INFO("AD_1 (%d bytes):", (int)ad_sz);
   print_char_8_info((char *)ad, ad_sz);
-  LOG_INFO("SUITES_I: %d\n", (int)msg1.suit_U);
+  LOG_INFO("SUITES_I: %d\n", (int)msg1.suit_I.buf[0]);
   LOG_INFO("message_1 (CBOR Sequence) (%d bytes):", (int)ctx->tx_sz);
   print_buff_8_info(ctx->msg_tx, ctx->tx_sz);
   LOG_PRINT("MSG1 sz: %d \n", (int)ctx->tx_sz);
@@ -949,8 +1040,10 @@ edhoc_gen_msg_error(uint8_t *msg_er, edhoc_context_t *ctx, int8_t err)
     break;
   }
 
-  if(err == ERR_SUIT_NON_SUPPORT) {
-    msg.suit = (bstr){ &ctx->session.suit, 1 };
+  if(err == ERR_NEW_SUIT_PROPOSE) {
+    msg.suit = (bstr){ ctx->session.suit, ctx->session.suit_num};
+    msg.err = (sstr){ "", 0 };
+    //msg.suit = (bstr){ &ctx->session.suit[0], 1 };
   } else {
     msg.suit = (bstr){ NULL, 0 };
   }
@@ -975,37 +1068,126 @@ edhoc_check_rx_msg(uint8_t *buffer, uint8_t buff_sz)
     print_char_8_err(err.err.buf, err.err.len);
     return RX_ERR_MSG;
   }
+  else if(msg_err_sz == -1){
+    LOG_ERR("RX MSG_ERROR WITH SUIT PROPOSE");
+    print_char_8_err(err.err.buf, err.err.len);
+    return RX_ERR_MSG;
+  }
+  return 0;
+}
+int8_t
+edhoc_check_rx_msg_2(uint8_t *buffer, uint8_t buff_sz,edhoc_context_t* ctx)
+{
+  /*Check if the rx msg is an msg_err */
+  uint8_t *msg_err = buffer;
+  edhoc_msg_error err = {{NULL,0},{NULL,0},{NULL,0}};
+  uint8_t msg_err_sz = 0;
+ // uint8_t suit_num = 0;
+  //uint8_t suit_rx[EDHOC_MAX_SUITS];
+  msg_err_sz = edhoc_deserialize_err(&err, msg_err, buff_sz);
+  if(msg_err_sz < 0) {
+    LOG_ERR("RX MSG_ERR:");
+    print_char_8_err(err.err.buf, err.err.len);
+    return RX_ERR_MSG;
+  }
+  /*else if(msg_err_sz == 2){
+    LOG_DBG("new suit proposal: ");
+    msg_err = err.suit.buf;
+    suit_rx[0] = edhoc_get_byte_identifier(&msg_err);
+    if(suit_rx[0] == 0){
+      suit_num = edhoc_get_array_num(&msg_err);
+      uint8_t i = 0;
+      while(i < suit_num){
+        suit_rx[i] = edhoc_get_unsigned(&msg_err);
+        i++;
+      }
+    }
+    print_buff_8_dbg(suit_rx,suit_num);
+  }*/
+
+
+  if(err.suit.len > 0){
+    LOG_DBG("Check with my new suit array to inclue in MSG1\n");
+    LOG_DBG("suir err:");
+     print_buff_8_dbg(err.suit.buf,err.suit.len);
+    uint8_t i = 0;
+    uint8_t x = 0;
+    uint8_t y = 0;
+    uint8_t suit_num = 0;
+    for(x = 0; x <ctx->session.suit_num; x++){
+      for(y = 0; y < err.suit.len; y++){
+        LOG_DBG("x(%d)-session(%d);y(%d)-err(%d)\n",x,ctx->session.suit[x],y,err.suit.buf[y]);
+        if(ctx->session.suit[x] == err.suit.buf[y]){
+          LOG_DBG("Find a suit that match (%d)\n",err.suit.buf[y]);
+          LOG_DBG("session suit:");
+          print_buff_8_dbg(ctx->session.suit,EDHOC_MAX_SUITS);
+          suit_num = 1;
+          for(i = x+1; i > 0; i--){
+            ctx->session.suit[i] = ctx->session.suit[i-1];
+            suit_num++;
+            LOG_DBG("session suit (%d):",i);
+            print_buff_8_dbg(ctx->session.suit,ctx->session.suit_num);
+       
+          }
+          ctx->session.suit[0] = err.suit.buf[y];
+          ctx->session.suit_rx = err.suit.buf[y];
+          LOG_DBG("Find a match with my suit array:");
+          print_buff_8_dbg(ctx->session.suit,EDHOC_MAX_SUITS);
+          break;
+        }
+      }
+      if(suit_num > 0) break;
+    }
+    ctx->session.suit_num = suit_num;
+    LOG_DBG("Find a match with my suit array:");
+    print_buff_8_dbg(ctx->session.suit,ctx->session.suit_num);
+    if(ctx->session.suit[0] == ctx->session.suit_rx){
+      LOG_WARN("ERR_RESEND_MSG_1\n");
+      return ERR_RESEND_MSG_1;
+    }
+    else{
+      LOG_ERR("ERR_SUIT_NON_SUPPORT\n");
+      return ERR_SUIT_NON_SUPPORT;
+    }
+  }
+  
   return 0;
 }
 int
 edhoc_handler_msg_1(edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz, uint8_t *ad)
 {
 
-  edhoc_msg_1 msg1 = { 0, 0, { NULL, 0 }, { NULL, 0 }, { NULL, 0 } };
+  edhoc_msg_1 msg1 = { 0, { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 } };
   int er = 0;
   /*Decode MSG1 */
   set_rx_msg(ctx, buffer, buff_sz);
 
   /*Check if the rx msg is an msg_err */
-  if(edhoc_check_rx_msg(buffer, buff_sz) < 0) {
+  er = edhoc_check_rx_msg(buffer, buff_sz);
+  if(er < 0) {
     return RX_ERR_MSG;
+  }
+  else if(er == 2){
+    return ERR_NEW_SUIT_PROPOSE;
   }
 
   LOG_INFO("MSG1 (%d bytes):", (int)ctx->rx_sz);
   print_buff_8_info(ctx->msg_rx, ctx->rx_sz);
   er = edhoc_deserialize_msg_1(&msg1, ctx->msg_rx, ctx->rx_sz);
   if(er < 0) {
-    LOG_ERR("MSG1 malformed");
+    LOG_ERR("MSG1 malformed\n");
     return er;
   }
   print_msg_1(&msg1);
-
+ 
   /*check rx suit and set id connection of the other part */
-  er = check_rx_suit(ctx, msg1.suit_U);
+  er = check_rx_suit_I(ctx, msg1.suit_I);
   if(er < 0) {
     LOG_ERR("Rx Suit not suported\n");
     return er;
   }
+  print_msg_1(&msg1);
+
 
   /*Check to not have the same cid */
   er = set_rx_cid(ctx, msg1.Ci.buf, msg1.Ci.len);
@@ -1061,9 +1243,14 @@ edhoc_handler_msg_2(edhoc_msg_2 *msg2, edhoc_context_t *ctx, uint8_t *buffer, si
   set_rx_msg(ctx, buffer, buff_sz);
 
   /*Check if the rx msg is an msg_err */
-  if(edhoc_check_rx_msg(buffer, buff_sz) < 0) {
+  /*if(edhoc_check_rx_msg(buffer, buff_sz) < 0) {
     return RX_ERR_MSG;
+  }*/
+  er = edhoc_check_rx_msg_2(buffer, buff_sz, ctx);
+  if(er < 0){
+    return er;
   }
+
 
   er = edhoc_deserialize_msg_2(msg2, ctx->msg_rx, ctx->rx_sz);
   if(er < 0) {
@@ -1206,6 +1393,9 @@ edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **ptr, uint8_t cipher_len, 
 
   ctx->session.cred_x.buf = inf;
   ctx->session.cred_x.len = generate_cred_x(&cose, ctx->session.cred_x.buf);
+
+  LOG_DBG("CRED_X (%d)",ctx->session.cred_x.len);
+  print_buff_8_dbg(ctx->session.cred_x.buf,ctx->session.cred_x.len);
 
   if(PART == PART_I) {
     gen_prk_3e2m(ctx, &authenticate, 0);

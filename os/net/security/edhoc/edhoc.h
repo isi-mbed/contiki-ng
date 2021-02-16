@@ -84,7 +84,8 @@
 typedef struct edhoc_session {
   uint8_t part;
   uint8_t method;
-  uint8_t suit;
+  uint8_t suit[5];
+  uint8_t suit_num;
   uint8_t suit_rx;
   bstr Gx;
   int cid;
@@ -129,6 +130,16 @@ void  edhoc_storage_init(void);
 edhoc_context_t *edhoc_new();
 
 /**
+ * \brief Initialize the EDHOC ctx with the define edhoc parameters
+ * \return edhoc_ctx_t EDHOC context struct
+ *
+ * Used in the edho_new to set the default protocol definitions and in the Responder to
+ * reset the initial values to prepare for a newd edhoc connection
+ */
+
+void edhoc_init(edhoc_context_t *ctx);
+
+/**
  * \brief Close the edhoc context
  * \param ctx EDHOC context struct
  *
@@ -142,6 +153,8 @@ void edhoc_finalize(edhoc_context_t *ctx);
  * \param ctx EDHOC Context struct
  * \param ad Application data to include in MSG1
  * \param ad_sz Application data lenght
+ * \param suit_array If true the msg1 include an array of suits if have more than one suit if 0 msg1 inclue an 
+ * unique unsigned suit independently of the number of suits supported by the initiator 
  *
  * Generate an ephemeral ECDH key pair, determinate the cipher suite to use and the
  * connection identifier. Compose the EDHOC Message 1 as describe the (draft-selander-lake-edhoc-01) reference
@@ -152,7 +165,7 @@ void edhoc_finalize(edhoc_context_t *ctx);
  * - ctx->MSG1 = (METHOD_CORR:unsigned, SUITES_I:unisgned, G_X:bstr, C_I:bstr_identifier)
  *
  */
-void edhoc_gen_msg_1(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz);
+void edhoc_gen_msg_1(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz,bool suit_array);
 
 /**
  * \brief Generate the EDHOC Message 2 and set it on the EDHOC ctx
