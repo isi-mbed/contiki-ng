@@ -170,6 +170,8 @@ get_text(uint8_t **in, char **out)
     size = byte ^ 0x60;
     *out = (char *)*in;
     *in = (*in + size);
+    LOG_INFO("text out:");
+    print_char_8_info(*out,size);
     return size;
   } else {
     LOG_DBG("get not text array\n ");
@@ -414,6 +416,7 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
   uint8_t key_sz = 0;
   uint8_t key_id_sz = 0;
   uint8_t *ptr = NULL;
+  char* ch = NULL;
 
   cose_key_t *hkey;
 
@@ -473,6 +476,7 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
 
   /*(PRKI_2) ID_CRED_R = CRED_R */
   case 1:
+    LOG_DBG("case 1 PRK_ID\n");
     key->kty = edhoc_get_unsigned(p);
     int param = get_negative(p);
     if(param != 1) {
@@ -494,13 +498,12 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
     key_sz = edhoc_get_bytes(p, &ptr);
     memcpy(key->y, ptr, ECC_KEY_BYTE_LENGHT);
 
-    char *ch = key->identity;
     key->identity_sz = get_text(p, &ch);
-
-    ch = key->identity;
-    if(memcmp(key->identity, "subject name", strlen("subject name"))) {
-
+    memcpy(key->identity,ch,key->identity_sz);
+    ch = NULL;
+    if(!memcmp(key->identity, "subject name", strlen("subject name"))) {
       key->identity_sz = get_text(p, &ch);
+      memcpy(key->identity,ch,key->identity_sz);
     }
 
     if(key_sz == 0) {

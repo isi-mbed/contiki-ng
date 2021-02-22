@@ -315,7 +315,7 @@ PROCESS_THREAD(edhoc_client_protocol, ev, data)
       er = edhoc_authenticate_msg(ctx, &pt, msg2.cipher.len, (uint8_t *)edhoc_state.ad.ad_2, &key);
     }
     time = RTIMER_NOW() - time;
-    LOG_INFO("Client time to authneticate MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t)time * 1000 / RTIMER_SECOND), (uint32_t)time);
+    LOG_PRINT("Client time to authneticate MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t)time * 1000 / RTIMER_SECOND), (uint32_t)time);
 
     if(er == RX_ERR_MSG) {
       LOG_ERR("error code (%d)\n", er);

@@ -48,7 +48,7 @@
 static uint8_t buf[MAX_BUFFER];
 static uint8_t inf[MAX_BUFFER];
 static uint8_t cred_x[128];
-static uint8_t id_cred_x[128];
+static uint8_t id_cred_x[256];
 static uint8_t mac[MAC_LEN];
 
 MEMB(edhoc_context_storage, edhoc_context_t, 1);
@@ -149,10 +149,10 @@ reconstruct_id_cred_x(uint8_t *cred_in, size_t cred_in_sz)
   uint8_t *ptr = id_cred_x;
   uint8_t num = edhoc_get_maps_num(&cred_in);
   if(num > 0) {
+    LOG_DBG("It is already at id_cred_x\n");
     cred_in--;
     memcpy(id_cred_x, cred_in, cred_in_sz);
     size = cred_in_sz;
-    /*print_buff_8_dbg(cred_in,cred_in_sz); */
   } else {
     if(cred_in_sz == 1) {
       uint8_t byte = edhoc_get_byte_identifier(&cred_in);
@@ -169,6 +169,7 @@ reconstruct_id_cred_x(uint8_t *cred_in, size_t cred_in_sz)
       size += cred_in_sz;
     }
   }
+  LOG_DBG("ID_CRED_X:");
   print_buff_8_dbg(id_cred_x, size);
   return size;
 }
@@ -372,6 +373,8 @@ set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, 
   memcpy(cose->external_aad, th_cbor, th_cbor_sz);
   memcpy((cose->external_aad + th_cbor_sz), ctx->session.cred_x.buf, ctx->session.cred_x.len);
   memcpy((cose->external_aad + th_cbor_sz + ctx->session.cred_x.len), ad, ad_sz);
+  LOG_INFO("cred_x:");
+  print_buff_8_info(ctx->session.cred_x.buf,ctx->session.cred_x.len);
 
   if(mac_num == MAC_2) {
     LOG_INFO("K_2m:\n");
