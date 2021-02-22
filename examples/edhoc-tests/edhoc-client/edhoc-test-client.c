@@ -91,8 +91,8 @@ PROCESS_THREAD(edhoc_example_client, ev, data)
   edhoc_add_key(&auth_client);
   edhoc_add_key(&auth_server);
 
-  /*edhoc_server_set_ad_1("MSG1!",strlen("MSG1!")); */
-  /*edhoc_server_set_ad_3("MSG3!",strlen("MSG3!")); */
+  /*edhoc_server_set_ad_1("MSG1!",strlen("MSG1!")); 
+  edhoc_server_set_ad_3("MSG3!",strlen("MSG3!")); */
 
   edhoc_client_run();
   while(1) {

@@ -575,8 +575,14 @@ gen_prk_2e(edhoc_context_t *ctx)
 static uint8_t
 gen_k_2e(edhoc_context_t *ctx, uint16_t lenght)
 {
-  LOG_INFO("k_2e\n");
-  int8_t er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
+  int8_t er = 0;
+  #if EDHOC_VERSION == EDHOC_02 
+    LOG_INFO("k_2e\n");
+    er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
+  #elif EDHOC_VERSION == EDHOC_04
+    LOG_INFO("KEYSTREAM_2\n");
+    er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "KEYSTREAM_2", strlen("KEYSTREAM_2"), lenght);
+  #endif
   if(er < 1) {
     return 0;
   }

@@ -41,6 +41,17 @@
 
 #ifndef _EDHOC_CONFIG_H_
 #define _EDHOC_CONFIG_H_
+
+#define EDHOC_02 1
+#define EDHOC_O4 2
+
+#ifdef EDHOC_CONF_VERSION
+#define EDHOC_VERSION EDHOC_CONF_VERSION
+#else
+#define EDHOC_VERSION EDHOC_O4
+#endif  
+
+
 /*SHA256 types*/
 #define DECC_SH2 0       /*Macro to declare the use of SH2 Software library from Oriol Pinol*/
 #define DCC2538_SH2 1    /*Macro to declare the use of SH2 Harware of the CC2538 module */
