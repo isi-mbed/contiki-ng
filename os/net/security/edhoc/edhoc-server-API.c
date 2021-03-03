@@ -119,7 +119,10 @@ edhoc_server_restart()
   memset(&server, 0, sizeof(edhoc_server_t));
   //memset(&ctx,0,sizeof(edhoc_context_t));
   edhoc_init(ctx);
-  return edhoc_get_authentication_key(ctx);
+  uint8_t val = edhoc_get_authentication_key(ctx);
+  LOG_DBG("CERT_HASH (Heder - %d): ",ctx->authen_key.header);
+  print_buff_8_dbg(ctx->authen_key.cert_hash.buf,ctx->authen_key.cert_hash.len);
+  return val;
 }
 uint8_t
 edhoc_server_start()

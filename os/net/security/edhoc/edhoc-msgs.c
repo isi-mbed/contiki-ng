@@ -97,7 +97,7 @@ edhoc_get_unsigned(uint8_t **in)
     return -1;
   }
 }
-static int64_t
+int64_t
 get_negative(uint8_t **in)
 {
   uint8_t byte = get_byte(in);
@@ -487,6 +487,19 @@ edhoc_get_cred_x_from_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **key)
   return ECC_KEY_BYTE_LENGHT;
 }
 uint8_t
+edhoc_get_cred_x_from_cert_hash(uint8_t *hash, uint8_t hash_sz, cose_key_t **key)
+{
+  LOG_DBG("HASH (%d):",hash_sz);
+  print_buff_8_dbg(hash,hash_sz);
+  cose_key_t *auth_key;
+  if(edhoc_check_key_list_cert_hash(hash, hash_sz, &auth_key) == 0) {
+    LOG_ERR("The authentication certification hash is not in the list\n");
+    return ERR_NOT_ALLOWED_IDENTITY;
+  }
+  *key = auth_key;
+  return ECC_KEY_BYTE_LENGHT;
+}
+uint8_t
 edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
 {
   *id_cred_x = *p;
@@ -515,6 +528,7 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
   switch(label) {
   /*(PRK_ID) ID_CRED_R = KID byte identifier (KID 1 Byte)*/
   case 0:
+    LOG_DBG("CASE 0\n");
     key_sz = edhoc_get_cred_x_from_kid(key->kid, key->kid_sz, &hkey);
     memcpy(key, hkey, sizeof(cose_key_t));
     if(key_sz == 0) {
@@ -542,7 +556,8 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
      }
      break;*/
   /*(PRK_ID) ID_CRED_R = map(4:KID bstr)  (KID 4 Byte)*/
-  case 4:
+  case HEADER_KID:
+    LOG_DBG("HEADER_KID\n");
     key_id_sz = edhoc_get_bytes(p, &ptr);
     key_sz = edhoc_get_cred_x_from_kid(ptr, key_id_sz, &hkey);
     memcpy(key, hkey, sizeof(cose_key_t));
@@ -552,6 +567,22 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
       return key_sz;
     }
     break;
+  
+  case HEADER_X5T:
+  LOG_DBG("HEADER_X5T\n");
+   uint8_t array_num = edhoc_get_array_num(p);
+   int8_t hash_alg = get_negative(p);
+   key_id_sz = edhoc_get_bytes(p,&ptr);
+   (*p)--;
+   LOG_DBG("HASH array num (%d), hash alg (%d), hash size (%d):",array_num, hash_alg, key_id_sz);
+   print_buff_8_dbg(ptr,key_id_sz);
+   key_sz = edhoc_get_cred_x_from_cert_hash(ptr,key_id_sz,&hkey);
+   memcpy(key, hkey, sizeof(cose_key_t));
+    if(key_sz == 0) {
+      return 0;
+    } else if(key_sz < 0) {
+      return key_sz;
+    }
 
   /*(PRKI_2) ID_CRED_R = CRED_R */
   case 1:

@@ -118,6 +118,7 @@
 #define PRKI 1
 #define PRK_ID 2
 #define PRKI_2 3
+#define X5T 4
 
 /**
  * \brief Set the authentication credential type

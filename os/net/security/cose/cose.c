@@ -86,6 +86,8 @@ cose_print_key(cose_key *cose)
   cose_print_buff_8_dbg(cose->x.buf, cose->x.len);
   LOG_DBG("y:");
   cose_print_buff_8_dbg(cose->y.buf, cose->y.len);
+  LOG_DBG("CERT_HASH (%d):",cose->header);
+  cose_print_buff_8_dbg(cose->cert_hash.buf, cose->cert_hash.len);
 }
 uint8_t
 cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key_sz, uint8_t *nonce, uint16_t nonce_sz)

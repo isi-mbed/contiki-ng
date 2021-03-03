@@ -150,12 +150,17 @@ hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint
 void
 generate_cose_key(ecc_key *key, cose_key *cose, char *identity, uint8_t id_sz)
 {
+  if ((AUTHENT_TYPE ==  PRK_ID) || (AUTHENT_TYPE == PRKI_2)) cose->header = HEADER_KID;
+  if (AUTHENT_TYPE ==  X5T) cose->header = HEADER_X5T;
   cose->kid = (bstr_cose){ key->kid, key->kid_sz };
   cose->identity = (sstr_cose){ identity, id_sz };
   cose->crv = KEY_CRV; /* P-256 */
   cose->kty = KEY_TYPE; /* EC2 */
   cose->x = (bstr_cose){ key->public.x, ECC_KEY_BYTE_LENGHT };
   cose->y = (bstr_cose){ key->public.y, ECC_KEY_BYTE_LENGHT };
+  cose->cert_hash = (bstr_cose) {key->cert_hash.buf,key->cert_hash.len};
+  cose->cert = (bstr_cose) {key->cert.buf,key->cert.len};
+
 }
 void
 set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t curve)
@@ -170,6 +175,10 @@ set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t cur
     memcpy(key->kid, auth_key->kid, auth_key->kid_sz);
     memcpy(key->public.x, auth_key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(key->public.y, auth_key->y, ECC_KEY_BYTE_LENGHT);
+    key->cert_hash.buf = auth_key->cert_hash;
+    key->cert_hash.len = 8;
+    key->cert.buf = auth_key->cert;
+    key->cert.len = auth_key->cert_sz;
   }
   generate_cose_key(key, cose, auth_key->identity, auth_key->identity_sz);
   LOG_DBG("Cose kid len (%d)\n", (int)cose->kid.len);

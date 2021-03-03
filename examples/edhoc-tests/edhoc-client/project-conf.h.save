@@ -15,8 +15,12 @@
 #define EDHOC_CID 0x16
 
 /*Define the coap server to conect with*/
-
-#define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:9d0e]"
+#define EDHOC_CONF_SERVER_EP "coap://[64:ff9b::c3fb:3acb]"
+//#define EDHOC_CONF_SERVER_EP "coap://[64:ff9b::c3fb:3acb]"
+//#define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:9d0e]"
+//#define EDHOC_CONF_SERVER_EP "coap://[64:ff9b::c0a8:106]"
+//#define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:9687]"
+//#define EDHOC_CONF_SERVER_EP "coap://[2001:648:23b0::2:4]"
 //#define EDHOC_CONF_SERVER_EP "coap://[fe80::202:2:2:2]" /* Server IP for Cooja simulator*/
 
 
@@ -31,8 +35,7 @@
 
 /*Define the authentication method*/
 //#define EDHOC_CONF_AUTHENT_TYPE PRKI_2
-//#define EDHOC_CONF_AUTHENT_TYPE PRK_ID
-#define EDHOC_CONF_AUTHENT_TYPE X5T
+#define EDHOC_CONF_AUTHENT_TYPE PRK_ID
 
 /*Define the libray for SHA operations*/
 //#define EDHOC_CONF_SH256 DECC_SH2
@@ -44,7 +47,7 @@
 //#define EDHOC_CONF_ECC UECC_ECC
 
 /*To run EDHOC client as RPL node*/
-//#define EDHOC_CONF_RPL_NODE 1
+#define EDHOC_CONF_RPL_NODE 1
 
 
 //#define EDHOC_CONF_SUIT  X25519

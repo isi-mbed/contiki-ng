@@ -114,24 +114,33 @@ static size_t
 generate_cred_x(cose_key *cose, uint8_t *cred)
 {
   size_t size = 0;
-  if(cose->crv == 1) {
-    size += cbor_put_map(&cred, 5);
-  } else {
-    size += cbor_put_map(&cred, 4);
+  LOG_DBG("COSE header: %d",cose->header);
+  if(cose->header == HEADER_X5T){
+    LOG_DBG("cred x is a certifiacte\n");
+    uint8_t *cert = cose->cert.buf;
+    print_buff_8_dbg(cose->cert.buf,cose->cert.len);
+    size += cbor_put_bytes(&cred,cert,cose->cert.len);
   }
+  if(cose->header == HEADER_KID){
+    if(cose->crv == 1) {
+      size += cbor_put_map(&cred, 5);
+    } else {
+      size += cbor_put_map(&cred, 4);
+    }
 
-  size += cbor_put_unsigned(&cred, 1);
-  size += cbor_put_unsigned(&cred, cose->kty);
-  size += cbor_put_negative(&cred, 1);
-  size += cbor_put_unsigned(&cred, cose->crv);
-  size += cbor_put_negative(&cred, 2);
-  size += cbor_put_bytes(&cred, cose->x.buf, cose->x.len);
-  if(cose->crv == 1) {
-    size += cbor_put_negative(&cred, 3);
-    size += cbor_put_bytes(&cred, cose->y.buf, cose->y.len);
+    size += cbor_put_unsigned(&cred, 1);
+    size += cbor_put_unsigned(&cred, cose->kty);
+    size += cbor_put_negative(&cred, 1);
+    size += cbor_put_unsigned(&cred, cose->crv);
+    size += cbor_put_negative(&cred, 2);
+    size += cbor_put_bytes(&cred, cose->x.buf, cose->x.len);
+    if(cose->crv == 1) {
+      size += cbor_put_negative(&cred, 3);
+      size += cbor_put_bytes(&cred, cose->y.buf, cose->y.len);
+    }
+    size += cbor_put_text(&cred, "subject name", strlen("subject name"));
+    size += cbor_put_text(&cred, cose->identity.buf, cose->identity.len);
   }
-  size += cbor_put_text(&cred, "subject name", strlen("subject name"));
-  size += cbor_put_text(&cred, cose->identity.buf, cose->identity.len);
   return size;
 }
 static size_t
@@ -151,12 +160,20 @@ generate_id_cred_x(cose_key *cose, uint8_t *cred)
   /*PRK_ID Include KID*/
   if(AUTHENT_TYPE == PRK_ID) {
     size += cbor_put_map(&cred, 1);
-    size += cbor_put_unsigned(&cred, 4);
+    size += cbor_put_unsigned(&cred, HEADER_KID);
     size += cbor_put_bytes(&cred, cose->kid.buf, cose->kid.len);
   }
   /*PRK_2 Include directly the credential used for authentication ID_CRED_X = CRED_X*/
   if(AUTHENT_TYPE == PRKI_2) {
     size = generate_cred_x(cose, cred);
+  }
+
+  if(AUTHENT_TYPE == X5T){
+    size += cbor_put_map(&cred,1);
+    size += cbor_put_unsigned(&cred, HEADER_X5T);
+    size += cbor_put_array(&cred,2);
+    size += cbor_put_negative(&cred, 15);
+    size += cbor_put_bytes(&cred,cose->cert_hash.buf,cose->cert_hash.len);
   }
   return size;
 }
@@ -705,18 +722,24 @@ gen_plaintext(uint8_t *buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   uint16_t size = 0;
   if(num == 1) {
     num = (uint8_t)edhoc_get_unsigned(&pint);
-    size = edhoc_get_bytes(&pint, &pout);
-
-    if(size < 0) {
-      LOG_ERR("error to get bytes\n");
-      return 0;
-    } else if(size == 1) {
-      pint = buffer;
-      cbor_put_bytes_identifier(&pint, pout, size);
-    } else {
-      pint = buffer;
-      size = cbor_put_bytes(&pint, pout, size);
+    if(num == HEADER_KID){
+      size = edhoc_get_bytes(&pint, &pout);
+      if(size < 0) {
+        LOG_ERR("error to get bytes\n");
+        return 0;
+      } else if(size == 1) {
+        pint = buffer;
+        cbor_put_bytes_identifier(&pint, pout, size);
+      } else {
+        pint = buffer;
+        size = cbor_put_bytes(&pint, pout, size);
+      }
     }
+    else if(num == HEADER_X5T){
+      memcpy(buffer, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
+      size = ctx->session.id_cred_x.len;  
+    }
+    
   } else {
     memcpy(buffer, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
     size = ctx->session.id_cred_x.len;
@@ -799,7 +822,7 @@ edhoc_get_authentication_key(edhoc_context_t *ctx)
   }
 #endif
 
-#ifdef AUTH_KID
+ #ifdef AUTH_KID
   cose_key_t *key;
   uint8_t key_id[sizeof(int)];
   uint8_t key_id_sz = 1;
@@ -817,6 +840,10 @@ edhoc_get_authentication_key(edhoc_context_t *ctx)
     memcpy(ctx->authen_key.public.x, key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.public.y, key->y, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.kid, key->kid, key->kid_sz);
+    ctx->authen_key.cert.buf = key->cert;
+    ctx->authen_key.cert_hash.buf = key->cert_hash;
+    ctx->authen_key.cert.len = key->cert_sz;
+    ctx->authen_key.cert_hash.len = 8;
     ctx->authen_key.kid_sz = key->kid_sz;
     ctx->authen_key.identity = key->identity;
     ctx->authen_key.identity_size = key->identity_sz;
@@ -824,7 +851,7 @@ edhoc_get_authentication_key(edhoc_context_t *ctx)
   } else {
     LOG_ERR("Does not contains a key for the key id\n");
   }
-#endif
+  #endif
   LOG_ERR("Not key for the specific AUTH_SUBJECT_NAME in the storage\n");
   return 0;
 }
@@ -870,7 +897,9 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*generate id_cred_x and cred_x */
   /*The cose key include the authentication key */
   cose_key cose;
+  LOG_DBG("cose header (%d)\n",ctx->authen_key.header);
   generate_cose_key(&ctx->authen_key, &cose, ctx->authen_key.identity, ctx->authen_key.identity_size);
+  LOG_DBG("COSE header: %d",cose.header);
   cose_print_key(&cose);
 
   ctx->session.cred_x.buf = cred_x;
@@ -1312,7 +1341,8 @@ int
 edhoc_get_auth_key(edhoc_context_t *ctx, uint8_t **pt, cose_key_t *key)
 {
   *pt = buf;
-
+  LOG_DBG("cred_x:");
+  print_buff_8_dbg(*pt,10); 
   ctx->session.id_cred_x.len = edhoc_get_id_cred_x(pt, &ctx->session.id_cred_x.buf, key);
   LOG_INFO("ID_CRED_X (for MAC):");
   print_buff_8_info(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);

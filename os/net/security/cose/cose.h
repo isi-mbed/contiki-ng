@@ -216,9 +216,12 @@ typedef struct cose_key {
   bstr_cose kid;  /* Key Identifier*/
   uint8_t kty;
   uint8_t crv;
+  uint8_t header;
   bstr_cose x;
   bstr_cose y;
   sstr_cose identity;
+  bstr_cose cert;
+  bstr_cose cert_hash;
   char name[8];  /* Identity */
 } cose_key;
 

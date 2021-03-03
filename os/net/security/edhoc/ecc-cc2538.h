@@ -63,6 +63,9 @@ typedef struct ecc_key {
   ecc_point_a public;
   char *identity;
   uint8_t identity_size;
+  bstr cert;
+  bstr cert_hash;
+  uint8_t header;
 } ecc_key;
 typedef struct  {
   /* Containers for the State */

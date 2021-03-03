@@ -127,4 +127,6 @@ size_t edhoc_get_bytes(uint8_t **in, uint8_t **out);
 int16_t edhoc_get_unsigned(uint8_t **in);
 uint8_t edhoc_get_array_num(uint8_t **in);
 
+
+
 #endif
