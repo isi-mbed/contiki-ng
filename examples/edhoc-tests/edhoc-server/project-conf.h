@@ -4,9 +4,7 @@
 
 #define LPM_CONF_MAX_PM 1
 
-#define IEEE802154_CONF_PANID 0xaaaa
-
-
+#define EDHOC_CONF_TIMEOUT 100000
 /* Mandatory EDHOC definitions on Server*/
 /* Define one kind of the following kind of identifiaction for the authentication key*/
 //#define AUTH_SUBJECT_NAME "Serv_A"
@@ -20,8 +18,8 @@
 #define EDHOC_CONF_CORR EXTERNAL_CORR_U 
 
 /*To run with the test vector DH ephimeral keys used on the edhoc-v02 interoperability sesion*/
-#define EDHOC_TEST TEST_VECTOR
-#define EDHOC_CONF_VERSION EDHOC_02
+//#define EDHOC_TEST TEST_VECTOR
+#define EDHOC_CONF_VERSION EDHOC_04
 
 /*Define the authentication method*/
 //#define EDHOC_CONF_AUTHENT_TYPE PRKI_2
@@ -37,13 +35,8 @@
 //#define EDHOC_CONF_ECC UECC_ECC
 
 
-/*#define EDHOC_CONF_SUIT  X25519_2
-#define EDHOC_CONF_SUIT_1 P256_2
-#define EDHOC_CONF_SUIT_2 P256*/
-
-
 /*To run EDHOC server as RPL node*/
-#define EDHOC_CONF_RPL_NODE 1
+//#define EDHOC_CONF_RPL_NODE 1
 
 /* Definde the node as Border Router*/
 /*#ifndef WEBSERVER_CONF_CFS_CONNS
