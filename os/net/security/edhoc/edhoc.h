@@ -60,7 +60,7 @@
 /**
  * \brief The max size of the buffers
  */
-#define MAX_BUFFER 256
+#define MAX_BUFFER 1024
 
 /**
  * \brief The max size of the EDHOC msg, as CoAP payload
@@ -108,8 +108,8 @@ typedef struct edhoc_context_t {
   ecc_curve_t curve;
   uint8_t msg_rx[MAX_PAYLOAD];
   uint8_t msg_tx[MAX_PAYLOAD];
-  uint16_t rx_sz;
-  uint16_t tx_sz;
+  size_t rx_sz;
+  size_t tx_sz;
 } edhoc_context_t;
 
 /**
@@ -253,7 +253,7 @@ int edhoc_get_auth_key(edhoc_context_t *ctx, uint8_t **pt, cose_key_t *key);
  * If any verification step fails to return an EDHOC ERROR code and, if all the steps success
  * the length of the Application Data receive on the Message is returned.
  */
-int edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **pt, uint8_t cipher_len, uint8_t *ad, cose_key_t *key);
+int edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **pt, size_t cipher_len, uint8_t *ad, cose_key_t *key);
 
 /**
  * \brief Handle the EDHOC Message 1 received

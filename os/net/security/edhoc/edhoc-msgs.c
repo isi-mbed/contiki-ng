@@ -132,8 +132,19 @@ edhoc_get_bytes(uint8_t **in, uint8_t **out)
     size = get_byte(in);
     *out = *in;
     *in = (*in + size);
+    //LOG_INFO("size: %d\n",size);
     return size;
-  } else if((0x40 <= byte) && (byte < 0x58)) {
+  }
+  else if(byte == 0x59){
+    size = get_byte(in);
+    size = (size<<8) + get_byte(in);
+    *out = *in;
+    *in = (*in + size);
+    //LOG_INFO("size: %d\n",size);
+    return size;
+    
+  } 
+  else if((0x40 <= byte) && (byte < 0x58)) {
     size = byte ^ 0x40;
     *out = *in;
     *in = (*in + size);
@@ -391,6 +402,8 @@ edhoc_deserialize_msg_2(edhoc_msg_2 *msg, unsigned char *buffer, size_t buff_sz)
 {
   uint8_t data_sz = 0;
   msg->data_2.buf = buffer;
+ // LOG_INFO("msg2 (%d):",buff_sz);
+  //print_buff_8_info(buffer,buff_sz);
 
   uint8_t var = ((4 * METHOD) + CORR) % 4;
   if((var == 3) || (var == 1)) {
@@ -447,6 +460,8 @@ edhoc_deserialize_msg_3(edhoc_msg_3 *msg, unsigned char *buffer, size_t buff_sz)
   }
 
   msg->cipher.len = edhoc_get_bytes(&buffer, &msg->cipher.buf);
+ // LOG_INFO("cipher (%d):",msg->cipher.len);
+//  print_buff_8_info(msg->cipher.buf,msg->cipher.len);
   if(msg->cipher.len == 0) {
     LOG_ERR("error code (%d)\n ", ERR_MSG_MALFORMED);
     return ERR_MSG_MALFORMED;
@@ -465,13 +480,40 @@ edhoc_get_cred_x_from_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **key)
   return ECC_KEY_BYTE_LENGHT;
 }
 uint8_t
+edhoc_get_cred_x_from_cert_hash(uint8_t *hash, uint8_t hash_sz, cose_key_t **key)
+{
+  LOG_DBG("HASH (%d):",hash_sz);
+  print_buff_8_dbg(hash,hash_sz);
+  cose_key_t *auth_key;
+  if(edhoc_check_key_list_cert_hash(hash, hash_sz, &auth_key) == 0) {
+    LOG_ERR("The authentication certification hash is not in the list\n");
+    return ERR_NOT_ALLOWED_IDENTITY;
+  }
+  *key = auth_key;
+  return ECC_KEY_BYTE_LENGHT;
+}
+
+uint8_t
+edhoc_get_cred_x_from_cert(uint8_t *cert, size_t cert_sz, cose_key_t **key)
+{
+  LOG_DBG("CERT (%d):",cert_sz);
+  print_buff_8_dbg(cert,cert_sz);
+  cose_key_t *auth_key;
+  if(edhoc_check_key_list_cert(cert, cert_sz, &auth_key) == 0) {
+    LOG_ERR("The authentication certification is not in the list\n");
+    return ERR_NOT_ALLOWED_IDENTITY;
+  }
+  *key = auth_key;
+  return ECC_KEY_BYTE_LENGHT;
+}
+size_t
 edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
 {
   *id_cred_x = *p;
   uint8_t num = edhoc_get_maps_num(p);
   uint8_t label;
-  uint8_t key_sz = 0;
-  uint8_t key_id_sz = 0;
+  size_t key_sz = 0;
+  size_t key_id_sz = 0;
   uint8_t *ptr = NULL;
   char* ch = NULL;
 
@@ -520,7 +562,8 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
      }
      break;*/
   /*(PRK_ID) ID_CRED_R = map(4:KID bstr)  (KID 4 Byte)*/
-  case 4:
+  case HEADER_KID:
+    LOG_DBG("HEADER_KID\n");
     key_id_sz = edhoc_get_bytes(p, &ptr);
     key_sz = edhoc_get_cred_x_from_kid(ptr, key_id_sz, &hkey);
     memcpy(key, hkey, sizeof(cose_key_t));
@@ -530,7 +573,39 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
       return key_sz;
     }
     break;
-
+  
+  case HEADER_X5T:
+  LOG_DBG("HEADER_X5T\n");
+   uint8_t array_num = edhoc_get_array_num(p);
+   int8_t hash_alg = get_negative(p);
+   key_id_sz = edhoc_get_bytes(p,&ptr);
+   //(*p)--;
+   LOG_DBG("HASH array num (%d), hash alg (%d), hash size (%d):",array_num, hash_alg, key_id_sz);
+   print_buff_8_dbg(ptr,key_id_sz);
+   key_sz = edhoc_get_cred_x_from_cert_hash(ptr,key_id_sz,&hkey);
+   memcpy(key, hkey, sizeof(cose_key_t));
+    if(key_sz == 0) {
+      return 0;
+    } else if(key_sz < 0) {
+      return key_sz;
+    }
+   break;
+    case HEADER_X5CHAIN:
+   LOG_DBG("HEADER_X5CHAIN\n");
+   key_id_sz = edhoc_get_bytes(p,&ptr);
+  // (*p)--;
+   LOG_DBG("CERT:");
+   //LOG_DBG("HASH array num (%d), hash alg (%d), hash size (%d):",array_num, hash_alg, key_id_sz);
+   print_buff_8_dbg(ptr,key_id_sz);
+   key_sz = edhoc_get_cred_x_from_cert(ptr,key_id_sz,&hkey);
+   memcpy(key, hkey, sizeof(cose_key_t));
+    if(key_sz == 0) {
+      return 0;
+    } else if(key_sz < 0) {
+      return key_sz;
+    }
+   break;
+ 
   /*(PRKI_2) ID_CRED_R = CRED_R */
   case 1:
     key->kty = edhoc_get_unsigned(p);
@@ -574,20 +649,20 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
     LOG_ERR("wrong key size\n ");
     return 0;
   }
-  uint8_t id_cred_x_sz = *p - *id_cred_x;
+  size_t id_cred_x_sz = *p - *id_cred_x;
   return id_cred_x_sz;
 }
-uint8_t
+size_t
 edhoc_get_sign(uint8_t **p, uint8_t **sign)
 {
-  uint8_t sign_sz = edhoc_get_bytes(p, sign);
+  size_t sign_sz = edhoc_get_bytes(p, sign);
   return sign_sz;
 }
-uint8_t
+size_t
 edhoc_get_ad(uint8_t **p, uint8_t *ad)
 {
   uint8_t *ptr;
-  uint8_t ad_sz = edhoc_get_bytes(p, &ptr);
+  size_t ad_sz = edhoc_get_bytes(p, &ptr);
   memcpy(ad, ptr, ad_sz);
   return ad_sz;
 }

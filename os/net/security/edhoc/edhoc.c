@@ -44,11 +44,11 @@
 #define MAC_3 3
 
 /*static rtimer_clock_t time; */
-
+static uint8_t buf2[MAX_BUFFER];
 static uint8_t buf[MAX_BUFFER];
 static uint8_t inf[MAX_BUFFER];
-static uint8_t cred_x[128];
-static uint8_t id_cred_x[128];
+static uint8_t cred_x[MAX_BUFFER];
+static uint8_t id_cred_x[MAX_BUFFER];
 static uint8_t mac[MAC_LEN];
 
 MEMB(edhoc_context_storage, edhoc_context_t, 1);
@@ -107,24 +107,39 @@ static size_t
 generate_cred_x(cose_key *cose, uint8_t *cred)
 {
   size_t size = 0;
-  if(cose->crv == 1) {
-    size += cbor_put_map(&cred, 5);
-  } else {
-    size += cbor_put_map(&cred, 4);
+  LOG_DBG("COSE header: %d",cose->header);
+  if(cose->header == HEADER_X5T){
+    LOG_DBG("cred x is a certifiacte\n");
+    uint8_t *cert = cose->cert.buf;
+   // print_buff_8_dbg(cose->cert.buf,cose->cert.len);
+    size += cbor_put_bytes(&cred,cert,cose->cert.len);
   }
+  if(cose->header == HEADER_X5CHAIN){
+    LOG_DBG("cred x is a certifiacte\n");
+    uint8_t *cert = cose->cert.buf;
+    //print_buff_8_dbg(cose->cert.buf,cose->cert.len);
+    size += cbor_put_bytes(&cred,cert,cose->cert.len);
+  }
+  if(cose->header == HEADER_KID){
+    if(cose->crv == 1) {
+      size += cbor_put_map(&cred, 5);
+    } else {
+      size += cbor_put_map(&cred, 4);
+    }
 
-  size += cbor_put_unsigned(&cred, 1);
-  size += cbor_put_unsigned(&cred, cose->kty);
-  size += cbor_put_negative(&cred, 1);
-  size += cbor_put_unsigned(&cred, cose->crv);
-  size += cbor_put_negative(&cred, 2);
-  size += cbor_put_bytes(&cred, cose->x.buf, cose->x.len);
-  if(cose->crv == 1) {
-    size += cbor_put_negative(&cred, 3);
-    size += cbor_put_bytes(&cred, cose->y.buf, cose->y.len);
+    size += cbor_put_unsigned(&cred, 1);
+    size += cbor_put_unsigned(&cred, cose->kty);
+    size += cbor_put_negative(&cred, 1);
+    size += cbor_put_unsigned(&cred, cose->crv);
+    size += cbor_put_negative(&cred, 2);
+    size += cbor_put_bytes(&cred, cose->x.buf, cose->x.len);
+    if(cose->crv == 1) {
+      size += cbor_put_negative(&cred, 3);
+      size += cbor_put_bytes(&cred, cose->y.buf, cose->y.len);
+    }
+    size += cbor_put_text(&cred, "subject name", strlen("subject name"));
+    size += cbor_put_text(&cred, cose->identity.buf, cose->identity.len);
   }
-  size += cbor_put_text(&cred, "subject name", strlen("subject name"));
-  size += cbor_put_text(&cred, cose->identity.buf, cose->identity.len);
   return size;
 }
 static size_t
@@ -144,12 +159,26 @@ generate_id_cred_x(cose_key *cose, uint8_t *cred)
   /*PRK_ID Include KID*/
   if(AUTHENT_TYPE == PRK_ID) {
     size += cbor_put_map(&cred, 1);
-    size += cbor_put_unsigned(&cred, 4);
+    size += cbor_put_unsigned(&cred, HEADER_KID);
     size += cbor_put_bytes(&cred, cose->kid.buf, cose->kid.len);
   }
   /*PRK_2 Include directly the credential used for authentication ID_CRED_X = CRED_X*/
   if(AUTHENT_TYPE == PRKI_2) {
     size = generate_cred_x(cose, cred);
+  }
+
+  if(AUTHENT_TYPE == X5T){
+    size += cbor_put_map(&cred,1);
+    size += cbor_put_unsigned(&cred, HEADER_X5T);
+    size += cbor_put_array(&cred,2);
+    size += cbor_put_negative(&cred, 15);
+    size += cbor_put_bytes(&cred,cose->cert_hash.buf,cose->cert_hash.len);
+  }
+
+  if(AUTHENT_TYPE == X5CHAIN) {
+    size += cbor_put_map(&cred, 1);
+    size += cbor_put_unsigned(&cred, HEADER_X5CHAIN);
+    size += cbor_put_bytes(&cred, cose->cert.buf, cose->cert.len);
   }
   return size;
 }
@@ -157,6 +186,7 @@ static size_t
 reconstruct_id_cred_x(uint8_t *cred_in, size_t cred_in_sz)
 {
   size_t size = 0;
+  //uint8_t id_cred_x[MAX_BUFFER];
   uint8_t *ptr = id_cred_x;
   uint8_t num = edhoc_get_maps_num(&cred_in);
   if(num > 0) {
@@ -254,7 +284,7 @@ set_rx_method(edhoc_context_t *ctx, uint8_t method)
   return 0;
 }
 static void
-set_rx_msg(edhoc_context_t *ctx, uint8_t *msg, uint8_t msg_sz)
+set_rx_msg(edhoc_context_t *ctx, uint8_t *msg, size_t msg_sz)
 {
   memcpy(ctx->msg_rx, msg, msg_sz);
   ctx->rx_sz = msg_sz;
@@ -346,23 +376,23 @@ gen_th2(edhoc_context_t *ctx, uint8_t *data, uint16_t data_sz, uint8_t *msg, uin
 static uint8_t
 gen_th3(edhoc_context_t *ctx, uint8_t *data, uint16_t data_sz, uint8_t *ciphertext, uint16_t ciphertext_sz)
 {
-  uint8_t h[MAX_BUFFER];
-  uint8_t *ptr = h;
+  //uint8_t h[MAX_BUFFER];
+  uint8_t *ptr = buf2;
   uint16_t h_sz = cbor_put_bytes(&ptr, ctx->session.th.buf, ctx->session.th.len);
   h_sz += cbor_put_bytes(&ptr, ciphertext, ciphertext_sz);
-  memcpy(h + h_sz, data, data_sz);
+  memcpy(buf2 + h_sz, data, data_sz);
   h_sz += data_sz;
   LOG_DBG("input to calculate TH_3 (CBOR Sequence) (%d bytes):", (int)h_sz);
-  print_buff_8_dbg(h, h_sz);
+  print_buff_8_dbg(buf2, h_sz);
 
   /*Compute TH */
-  uint8_t er = compute_TH(h, h_sz, ctx->session.th.buf, ctx->session.th.len);
+  uint8_t er = compute_TH(buf2, h_sz, ctx->session.th.buf, ctx->session.th.len);
   if(er != 0) {
     LOG_ERR("ERR COMPUTED TH3\n ");
     return ERR_CODE;
   }
-  LOG_DBG("TH3 (%d bytes):", (int)ctx->session.th.len);
-  print_buff_8_dbg(ctx->session.th.buf, ctx->session.th.len);
+  LOG_INFO("TH3 (%d bytes):", (int)ctx->session.th.len);
+  print_buff_8_info(ctx->session.th.buf, ctx->session.th.len);
   return 0;
 }
 int16_t
@@ -377,18 +407,23 @@ edhoc_kdf(uint8_t *result, uint8_t *key, bstr th, char *label, uint16_t label_sz
   return lenght;
 }
 static uint8_t
-set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t mac_num)
+set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad ,size_t ad_sz, uint8_t mac_num)
 {
+
+    /* COSE encrypt0 set header */
+  print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
+  cose_encrypt0_set_header(cose, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len, NULL, 0);
   /*CBOR The TH2 */
   cose_encrypt0_set_content(cose, NULL, 0, NULL, 0);
   uint8_t th_cbor[ECC_KEY_BYTE_LENGHT + 2];
   uint8_t *th_ptr = th_cbor;
   size_t th_cbor_sz = cbor_put_bytes(&th_ptr, ctx->session.th.buf, ctx->session.th.len);
   /*COSE encrypt0 set external aad */
-  cose->external_aad_sz = th_cbor_sz + ctx->session.cred_x.len + ad_sz;
-  memcpy(cose->external_aad, th_cbor, th_cbor_sz);
-  memcpy((cose->external_aad + th_cbor_sz), ctx->session.cred_x.buf, ctx->session.cred_x.len);
-  memcpy((cose->external_aad + th_cbor_sz + ctx->session.cred_x.len), ad, ad_sz);
+  cose->external_aad.buf = buf2;
+  cose->external_aad.len = th_cbor_sz + ctx->session.cred_x.len + ad_sz;
+  memcpy(cose->external_aad.buf, th_cbor, th_cbor_sz);
+  memcpy((cose->external_aad.buf + th_cbor_sz), ctx->session.cred_x.buf, ctx->session.cred_x.len);
+  memcpy((cose->external_aad.buf + th_cbor_sz + ctx->session.cred_x.len), ad, ad_sz);
 
   if(mac_num == MAC_2) {
     LOG_DBG("K_2m:\n");
@@ -416,13 +451,11 @@ set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, 
   cose->key_sz = KEY_DATA_LENGHT;
   cose->nonce_sz = IV_LENGHT;
 
-  /* COSE encrypt0 set header */
-  print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
-  cose_encrypt0_set_header(cose, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len, NULL, 0);
+
   return 1;
 }
-static uint8_t
-gen_mac_dh(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac)
+static uint16_t
+gen_mac_dh(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz, uint8_t *mac)
 {
   uint8_t mac_num = 0;
   if(PART == PART_I) {
@@ -435,15 +468,17 @@ gen_mac_dh(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac)
     LOG_ERR("Set MAC error\n");
     return 0;
   }
-  uint8_t mac_sz = cose_encrypt(cose);
+  LOG_INFO("Gen MAC DH\n");
+  uint16_t mac_sz = cose_encrypt(cose);
   for(int i = 0; i < mac_sz; i++) {
-    mac[i] = cose->ciphertext[i];
+    //mac[i] = cose->ciphertext[i];
+    mac[i] = cose->plaintext[i];
   }
   cose_encrypt0_finalize(cose);
   return mac_sz;
 }
 static uint16_t
-check_mac_dh(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *cipher, uint16_t cipher_sz)
+check_mac_dh(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz, uint8_t *cipher, size_t cipher_sz)
 {
   uint8_t mac_num = 0;
   if(PART == PART_I) {
@@ -451,13 +486,12 @@ check_mac_dh(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *cipher,
   } else if(PART == PART_R) {
     mac_num = MAC_3;
   }
-
   cose_encrypt0 *cose = cose_encrypt0_new();
   if(!set_mac(cose, ctx, ad, ad_sz, mac_num)) {
     LOG_ERR("Set MAC error\n");
     return 0;
   }
-  LOG_DBG("check mac dh (%d):", (int)cipher_sz);
+  LOG_DBG("check mac dh (cose decrypt)(%d):", (int)cipher_sz);
   print_buff_8_dbg(cipher, cipher_sz);
   cose_encrypt0_set_ciphertext(cose, cipher, cipher_sz);
   uint16_t mac_sz = cose_decrypt(cose);
@@ -501,21 +535,23 @@ gen_prk_2e(edhoc_context_t *ctx)
 }
 /*use PRK_2e */
 static uint8_t
-gen_k_2e(edhoc_context_t *ctx, uint16_t lenght)
+gen_k_2e(edhoc_context_t *ctx, uint8_t *k_2e, uint16_t lenght)
+//gen_k_2e(edhoc_context_t *ctx, uint16_t lenght)
 {
   int8_t er = 0;
   #if EDHOC_VERSION == EDHOC_02 
     LOG_DBG("k_2e\n");
-    er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
+     er = edhoc_kdf(k_2e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
+   // er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
   #elif EDHOC_VERSION == EDHOC_04
     LOG_DBG("KEYSTREAM_2\n");
-    er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "KEYSTREAM_2", strlen("KEYSTREAM_2"), lenght);
+    er = edhoc_kdf(k_2e, ctx->eph_key.prk_2e, ctx->session.th, "KEYSTREAM_2", strlen("KEYSTREAM_2"), lenght);
   #endif
   if(er < 1) {
     return 0;
   }
-  LOG_DBG("K2_e (%d bytes):", (int)lenght);
-  print_buff_8_dbg(ctx->eph_key.k2_e, lenght);
+  LOG_INFO("K2_e (%d bytes):", (int)lenght);
+  print_buff_8_info(k_2e, lenght);
 
   return 1;
 }
@@ -572,26 +608,32 @@ gen_prk_4x3m(edhoc_context_t *ctx, ecc_key *key_authenticate, uint8_t gen)
 static void
 gen_ciphertext_2(edhoc_context_t *ctx, uint8_t *plaintext, uint16_t plaintext_sz)
 {
+  //uint8_t k_2e[plaintext_sz];
+  gen_k_2e(ctx,buf2,plaintext_sz);
   for(int i = 0; i < plaintext_sz; i++) {
-    plaintext[i] = plaintext[i] ^ ctx->eph_key.k2_e[i];
+    plaintext[i] = plaintext[i] ^ buf2[i];
   }
 }
 static uint16_t
-decrypt_ciphertext_3(edhoc_context_t *ctx, uint8_t *ciphertext, uint16_t ciphertext_sz, uint8_t *plaintext)
+decrypt_ciphertext_3(edhoc_context_t *ctx, uint8_t *ciphertext, size_t ciphertext_sz, uint8_t *plaintext)
 {
   cose_encrypt0 *cose = cose_encrypt0_new();
   /*set external aad in cose */
-  cose_encrypt0_set_content(cose, NULL, 0, NULL, 0);
-  uint8_t *th3_ptr = cose->external_aad;
+ // cose_encrypt0_set_content(cose, NULL, 0, NULL, 0);
+  /*uint8_t *th3_ptr = cose->external_aad;
   memcpy(th3_ptr, ctx->session.th.buf, ctx->session.th.len);
   cose->external_aad_sz = ctx->session.th.len;
-
+*/
+  cose_encrypt0_set_content(cose,NULL,0, ctx->session.th.buf,ctx->session.th.len);
+ /* cose->external_aad.buf = buf;
+  memcpy(cose->external_aad.buf, ctx->session.th.buf, ctx->session.th.len);
+  cose->external_aad.len = ctx->session.th.len;*/
   cose_encrypt0_set_ciphertext(cose, ciphertext, ciphertext_sz);
   /* COSE encrypt0 set header */
   cose_encrypt0_set_header(cose, NULL, 0, NULL, 0);
   /* generate K3_ae */
-  LOG_DBG("K_3ae\n");
-  int8_t er = edhoc_kdf(cose->key, ctx->eph_key.prk_3e2m, ctx->session.th, "K_3ae", strlen("K_3ae"), KEY_DATA_LENGHT);
+  //LOG_INFO("K_3ae\n");
+  int16_t er = edhoc_kdf(cose->key, ctx->eph_key.prk_3e2m, ctx->session.th, "K_3ae", strlen("K_3ae"), KEY_DATA_LENGHT);
   if(er < 1) {
     LOG_ERR("error in expand for decrypt ciphertext 3\n");
     return 0;
@@ -599,14 +641,14 @@ decrypt_ciphertext_3(edhoc_context_t *ctx, uint8_t *ciphertext, uint16_t ciphert
   cose->key_sz = KEY_DATA_LENGHT;
 
   /* generate IV */
-  LOG_DBG("IV_3ae\n");
+  //LOG_INFO("IV_3ae\n");
   er = edhoc_kdf(cose->nonce, ctx->eph_key.prk_3e2m, ctx->session.th, "IV_3ae", strlen("IV_3ae"), IV_LENGHT);
   if(er < 1) {
     LOG_ERR("error in expand for decrypt ciphertext 3\n");
     return 0;
   }
   cose->nonce_sz = IV_LENGHT;
-
+  //LOG_INFO("decrypt ciphertext3\n");
   /*Encrypt cose */
   if(!cose_decrypt(cose)) {
     LOG_ERR("ciphertext 3 decrypt error \n");
@@ -630,18 +672,24 @@ gen_plaintext(uint8_t *buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   uint16_t size = 0;
   if(num == 1) {
     num = (uint8_t)edhoc_get_unsigned(&pint);
-    size = edhoc_get_bytes(&pint, &pout);
-
-    if(size < 0) {
-      LOG_ERR("error to get bytes\n");
-      return 0;
-    } else if(size == 1) {
-      pint = buffer;
-      cbor_put_bytes_identifier(&pint, pout, size);
-    } else {
-      pint = buffer;
-      size = cbor_put_bytes(&pint, pout, size);
+    if(num == HEADER_KID){
+      size = edhoc_get_bytes(&pint, &pout);
+      if(size < 0) {
+        LOG_ERR("error to get bytes\n");
+        return 0;
+      } else if(size == 1) {
+        pint = buffer;
+        cbor_put_bytes_identifier(&pint, pout, size);
+      } else {
+        pint = buffer;
+        size = cbor_put_bytes(&pint, pout, size);
+      }
     }
+    else if((num == HEADER_X5T)||(num == HEADER_X5CHAIN)){
+      memcpy(buffer, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
+      size = ctx->session.id_cred_x.len;  
+    }
+    
   } else {
     memcpy(buffer, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
     size = ctx->session.id_cred_x.len;
@@ -661,10 +709,14 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
   int8_t er = 0;
   cose_encrypt0 *cose = cose_encrypt0_new();
   /*set external aad in cose */
-  uint8_t *th3_ptr = cose->external_aad;
+  /*uint8_t *th3_ptr = cose->external_aad;
   cose->external_aad_sz = ctx->session.th.len;
   memcpy(th3_ptr, ctx->session.th.buf, ctx->session.th.len);
-
+*/
+  cose_encrypt0_set_content(cose,NULL,0, ctx->session.th.buf,ctx->session.th.len);
+ /*uint8_t *th3_ptr = cose->external_aad;
+  cose->external_aad_sz = ctx->session.th.len;
+  memcpy(th3_ptr, ctx->session.th.buf, ctx->session.th.len);*/
   cose->plaintext_sz = gen_plaintext(cose->plaintext, ctx, ad, ad_sz);
   LOG_DBG("P_3ae (%d bytes):", (int)cose->plaintext_sz);
   print_buff_8_dbg(cose->plaintext, cose->plaintext_sz);
@@ -695,10 +747,12 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
   cose_encrypt0_set_header(cose, NULL, 0, NULL, 0);
 
   /*Encrypt cose */
+  LOG_INFO("gen ciphertext 3. A_3ae\n");
   cose_encrypt(cose);
 
   uint8_t *ptr = ciphertext;
-  uint16_t ext = cbor_put_bytes(&ptr, cose->ciphertext, cose->ciphertext_sz);
+  //uint16_t ext = cbor_put_bytes(&ptr, cose->ciphertext, cose->ciphertext_sz);
+  uint16_t ext = cbor_put_bytes(&ptr, cose->plaintext, cose->plaintext_sz);
 
   /*Empty memory */
   cose_encrypt0_finalize(cose);
@@ -742,6 +796,10 @@ edhoc_get_authentication_key(edhoc_context_t *ctx)
     memcpy(ctx->authen_key.public.x, key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.public.y, key->y, ECC_KEY_BYTE_LENGHT);
     memcpy(ctx->authen_key.kid, key->kid, key->kid_sz);
+    ctx->authen_key.cert.buf = key->cert;
+    ctx->authen_key.cert_hash.buf = key->cert_hash;
+    ctx->authen_key.cert.len = key->cert_sz;
+    ctx->authen_key.cert_hash.len = 8;
     ctx->authen_key.kid_sz = key->kid_sz;
     ctx->authen_key.identity = key->identity;
     ctx->authen_key.identity_size = key->identity_sz;
@@ -792,39 +850,45 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*The cose key include the authentication key */
   cose_key cose;
   generate_cose_key(&ctx->authen_key, &cose, ctx->authen_key.identity, ctx->authen_key.identity_size);
-
+  
+  //uint8_t cred_x[MAX_BUFFER];
   ctx->session.cred_x.buf = cred_x;
   ctx->session.cred_x.len = generate_cred_x(&cose, ctx->session.cred_x.buf);
   LOG_DBG("CRED_R (%d bytes):", (int)ctx->session.cred_x.len);
   print_buff_8_dbg(ctx->session.cred_x.buf, ctx->session.cred_x.len);
-
+  
+  //uint8_t id_cred_x[MAX_BUFFER];
   ctx->session.id_cred_x.buf = id_cred_x;
   ctx->session.id_cred_x.len = generate_id_cred_x(&cose, ctx->session.id_cred_x.buf);
-  LOG_DBG("ID_CRED_R (%d bytes):", (int)ctx->session.id_cred_x.len);
-  print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
+  LOG_INFO("ID_CRED_R (%d bytes):", (int)ctx->session.id_cred_x.len);
+  print_buff_8_info(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
 
   gen_prk_2e(ctx);
 
   /*generate prk_3e2m */
   gen_prk_3e2m(ctx, &ctx->authen_key, 1);
+
+
 #if ((METHOD == METH0) || (METHOD == METH2))
 
 #endif
 
 #if ((METHOD == METH1) || (METHOD == METH3))
   gen_mac_dh(ctx, ad, ad_sz, mac);
-  LOG_DBG("MAC_2 (%d b ytes):",(int) MAC_LEN);
-  print_buff_8_dbg(mac, MAC_LEN);
+  LOG_INFO("MAC_2 (%d b ytes):",(int) MAC_LEN);
+  print_buff_8_info(mac, MAC_LEN);
 #endif
+  /*LOG_DBG("id cred x buf:");
+  print_buff_8_dbg(ctx->session.id_cred_x.buf,ctx->session.id_cred_x.len);*/
 
   uint16_t p_sz = gen_plaintext(buf, ctx, ad, ad_sz);
-  LOG_DBG("P_2e (%d bytes):", (int)p_sz);
-  print_buff_8_dbg(buf, p_sz);
-  gen_k_2e(ctx, p_sz);
+  /*LOG_INFO("P_2e (%d bytes):", (int)p_sz);
+  print_buff_8_info(buf, p_sz);*/
+ // gen_k_2e(ctx, p_sz);
 
   gen_ciphertext_2(ctx, buf, p_sz);
 
-  LOG_DBG("CIPHERTEXT_2 (%d bytes):", (int)p_sz);
+  LOG_INFO("CIPHERTEXT_2 (%d bytes)\n", (int)p_sz);
   print_buff_8_dbg(buf, p_sz);
   /*set ciphertext on msg tx */
   ctx->tx_sz = data_sz;
@@ -835,6 +899,9 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   uint8_t head = 1;
   if(*(ctx->msg_tx + data_sz) == 0x58) {
     head++;
+  }
+  else if(*(ctx->msg_tx + data_sz) == 0x59) {
+    head = head + 2;
   }
   ctx->session.ciphertex_2.len -= head;
   ctx->session.ciphertex_2.buf = ctx->msg_tx + data_sz + head;
@@ -861,23 +928,25 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   LOG_DBG("SK_I (Initiator's private authnetication key) (%d bytes):", ECC_KEY_BYTE_LENGHT);
   print_buff_8_dbg(ctx->authen_key.private_key, ECC_KEY_BYTE_LENGHT);
 
-  LOG_DBG("G_I (x)(Initiator's public authnetication key) (%d bytes):", ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(ctx->authen_key.public.x, ECC_KEY_BYTE_LENGHT);
+//  LOG_DBG("G_I (x)(Initiator's public authnetication key) (%d bytes):", ECC_KEY_BYTE_LENGHT);
+ // print_buff_8_dbg(ctx->authen_key.public.x, ECC_KEY_BYTE_LENGHT);
 
-  LOG_DBG("(y) (Initiator's public authnetication key) (%d bytes):", ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(ctx->authen_key.public.y, ECC_KEY_BYTE_LENGHT);
+ // LOG_DBG("(y) (Initiator's public authnetication key) (%d bytes):", ECC_KEY_BYTE_LENGHT);
+ // print_buff_8_dbg(ctx->authen_key.public.y, ECC_KEY_BYTE_LENGHT);
 
   /*generate cred_x */
+  //uint8_t cred_x[MAX_BUFFER];
   ctx->session.cred_x.buf = cred_x;
   ctx->session.cred_x.len = generate_cred_x(&cose, ctx->session.cred_x.buf);
-  LOG_DBG("CRED_I (%d bytes):", (int)ctx->session.cred_x.len);
-  print_buff_8_dbg(ctx->session.cred_x.buf, ctx->session.cred_x.len);
+ // LOG_DBG("CRED_I (%d bytes):", (int)ctx->session.cred_x.len);
+ // print_buff_8_dbg(ctx->session.cred_x.buf, ctx->session.cred_x.len);
 
   /*generate id_cred_x */
+  //uint8_t id_cred_x[MAX_BUFFER];
   ctx->session.id_cred_x.buf = id_cred_x;
   ctx->session.id_cred_x.len = generate_id_cred_x(&cose, ctx->session.id_cred_x.buf);
-  LOG_DBG("ID_CRED_I (%d bytes):", (int)ctx->session.id_cred_x.len);
-  print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
+  LOG_INFO("ID_CRED_I (%d bytes):", (int)ctx->session.id_cred_x.len);
+  print_buff_8_info(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
 
   /*Genetrate prk_4x3m */
   gen_prk_4x3m(ctx, &ctx->authen_key, 0);
@@ -889,8 +958,8 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*Generate Authentication MAC */
 #if ((METHOD == METH1) || (METHOD == METH3))
   gen_mac_dh(ctx, ad, ad_sz, mac);
-  LOG_DBG("MAC 3 (%d bytes):", MAC_LEN);
-  print_buff_8_dbg(mac, MAC_LEN);
+  LOG_INFO("MAC 3 (%d bytes):", MAC_LEN);
+  print_buff_8_info(mac, MAC_LEN);
 #endif
 
   /*time = RTIMER_NOW(); */
@@ -901,9 +970,10 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*Point ciphertext_3 for the exporter */
   uint8_t *ptr_c = &ctx->msg_tx[data_3_sz];
   ctx->session.ciphertex_3.len = edhoc_get_bytes(&ptr_c, &ctx->session.ciphertex_3.buf);
-  LOG_DBG("CIPHERTEXT_3 (%d bytes):", (int)ctx->session.ciphertex_3.len);
-  print_buff_8_dbg(ctx->session.ciphertex_3.buf, ctx->session.ciphertex_3.len);
-  LOG_INFO("MSG3 sz: %d \n", (int)ctx->tx_sz);
+  //LOG_DBG("CIPHERTEXT_3 (%d bytes):", (int)ctx->session.ciphertex_3.len);
+ // print_buff_8_dbg(ctx->session.ciphertex_3.buf, ctx->session.ciphertex_3.len);
+  LOG_INFO("MSG3 (%d): \n", (int)ctx->tx_sz);
+  print_buff_8_info(ctx->msg_tx,ctx->tx_sz);
 }
 uint8_t
 edhoc_gen_msg_error(uint8_t *msg_er, edhoc_context_t *ctx, int8_t err)
@@ -963,12 +1033,12 @@ edhoc_gen_msg_error(uint8_t *msg_er, edhoc_context_t *ctx, int8_t err)
   return err_sz;
 }
 int8_t
-edhoc_check_rx_msg(uint8_t *buffer, uint8_t buff_sz)
+edhoc_check_rx_msg(uint8_t *buffer, size_t buff_sz)
 {
   /*Check if the rx msg is an msg_err */
   uint8_t *msg_err = buffer;
   edhoc_msg_error err;
-  uint8_t msg_err_sz = 0;
+  int8_t msg_err_sz = 0;
   msg_err_sz = edhoc_deserialize_err(&err, msg_err, buff_sz);
   if(msg_err_sz > 0) {
     LOG_ERR("RX MSG_ERR:");
@@ -1048,8 +1118,8 @@ edhoc_handler_msg_1(edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz, uint8
     return ERR_NEW_SUIT_PROPOSE;
   }
 
-  LOG_DBG("MSG1 (%d bytes):", (int)ctx->rx_sz);
-  print_buff_8_dbg(ctx->msg_rx, ctx->rx_sz);
+  LOG_INFO("MSG1 (%d bytes):", (int)ctx->rx_sz);
+  print_buff_8_info(ctx->msg_rx, ctx->rx_sz);
   er = edhoc_deserialize_msg_1(&msg1, ctx->msg_rx, ctx->rx_sz);
   if(er < 0) {
     LOG_ERR("MSG1 malformed\n");
@@ -1116,11 +1186,14 @@ int
 edhoc_handler_msg_2(edhoc_msg_2 *msg2, edhoc_context_t *ctx, uint8_t *buffer, size_t buff_sz)
 {
   int er = 0;
-  set_rx_msg(ctx, buffer, buff_sz);
-  er = edhoc_check_rx_msg_2(buffer, buff_sz, ctx);
+  //set_rx_msg(ctx, buffer, buff_sz);
+  //er = edhoc_check_rx_msg_2(buffer, buff_sz, ctx);
+  er = edhoc_check_rx_msg_2(ctx->msg_rx, ctx->rx_sz, ctx);
   if(er < 0){
     return er;
   }
+  //LOG_INFO("msg2 (%d):",ctx->rx_sz);
+ // print_buff_8_info(ctx->msg_rx,ctx->rx_sz);
   er = edhoc_deserialize_msg_2(msg2, ctx->msg_rx, ctx->rx_sz);
   if(er < 0) {
     LOG_ERR("MSG2 malformed\n");
@@ -1152,7 +1225,7 @@ edhoc_handler_msg_2(edhoc_msg_2 *msg2, edhoc_context_t *ctx, uint8_t *buffer, si
   gen_th2(ctx, msg2->data_2.buf, msg2->data_2.len, ctx->msg_tx, ctx->tx_sz);
 
   /*Gen K_2e */
-  gen_k_2e(ctx, msg2->cipher.len);
+ // gen_k_2e(ctx, msg2->cipher.len);
 
   /*Set ciphertext */
   ctx->session.ciphertex_2.buf = msg2->cipher.buf;
@@ -1160,10 +1233,12 @@ edhoc_handler_msg_2(edhoc_msg_2 *msg2, edhoc_context_t *ctx, uint8_t *buffer, si
 
   /*Decripted cipher text */
   memcpy(buf, msg2->cipher.buf, msg2->cipher.len);
-  LOG_DBG("CIPHERTEXT_2 (%d bytes):", (int)msg2->cipher.len);
+  
+  LOG_INFO("CIPHERTEXT_2 (%d bytes)\n", (int)msg2->cipher.len);
   print_buff_8_dbg(buf, msg2->cipher.len);
   gen_ciphertext_2(ctx, buf, msg2->cipher.len);
-  LOG_DBG("P_2 (%d bytes):", (int)msg2->cipher.len);
+  
+  LOG_INFO("P_2 (%d bytes)\n", (int)msg2->cipher.len);
   print_buff_8_dbg(buf, msg2->cipher.len);
 
   return 1;
@@ -1174,8 +1249,8 @@ edhoc_get_auth_key(edhoc_context_t *ctx, uint8_t **pt, cose_key_t *key)
   *pt = buf;
 
   ctx->session.id_cred_x.len = edhoc_get_id_cred_x(pt, &ctx->session.id_cred_x.buf, key);
-  LOG_DBG("ID_CRED_X (for MAC):");
-  print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
+  LOG_INFO("ID_CRED_X (for MAC) (%d)\n",ctx->session.id_cred_x.len);
+  print_buff_8_info(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
   if(ctx->session.id_cred_x.len == 0) {
     LOG_ERR("error code (%d)\n ", ERR_ID_CRED_X_MALFORMED);
     return ERR_ID_CRED_X_MALFORMED;
@@ -1190,12 +1265,13 @@ edhoc_handler_msg_3(edhoc_msg_3 *msg3, edhoc_context_t *ctx, uint8_t *buffer, si
 {
   /*Decode MSG3 */
   set_rx_msg(ctx, buffer, buff_sz);
-
+//  LOG_INFO("MSG3 (%d):",ctx->rx_sz);
+ // print_buff_8_info(ctx->msg_rx,ctx->rx_sz);
   /*Check if the rx msg is an msg_err */
   if(edhoc_check_rx_msg(buffer, buff_sz) < 0) {
     return RX_ERR_MSG;
   }
-
+  
   int8_t er = edhoc_deserialize_msg_3(msg3, ctx->msg_rx, ctx->rx_sz);
   if(er < 0) {
     LOG_ERR("MSG3 malformed\n");
@@ -1213,34 +1289,35 @@ edhoc_handler_msg_3(edhoc_msg_3 *msg3, edhoc_context_t *ctx, uint8_t *buffer, si
   /*Set the ciphertex_3 for the key exporter */
   ctx->session.ciphertex_3.buf = msg3->cipher.buf;
   ctx->session.ciphertex_3.len = msg3->cipher.len;
-  LOG_DBG("CIPHERTEXT_3 (%d bytes):", (int)ctx->session.ciphertex_3.len);
-  print_buff_8_dbg(ctx->session.ciphertex_3.buf, ctx->session.ciphertex_3.len);
+ // LOG_INFO("CIPHERTEXT_3 (%d bytes):", (int)ctx->session.ciphertex_3.len);
+ // print_buff_8_info(ctx->session.ciphertex_3.buf, ctx->session.ciphertex_3.len);
 
-  LOG_DBG("data_3 (%d bytes):", (int)msg3->data_3.len);
+  LOG_INFO("data_3 (%d bytes)\n", (int)msg3->data_3.len);
   print_buff_8_dbg(msg3->data_3.buf, msg3->data_3.len);
 
   /*generate TH3 */
   gen_th3(ctx, msg3->data_3.buf, msg3->data_3.len, ctx->session.ciphertex_2.buf, ctx->session.ciphertex_2.len);
-
+   
+  //LOG_INFO("cipger3 (%d):",msg3->cipher.len);
+  //print_buff_8_info(msg3->cipher.buf,msg3->cipher.len);  
   /*decrypt msg3 and check the TAG for verify the outer */
   uint16_t plaintext_sz = decrypt_ciphertext_3(ctx, msg3->cipher.buf, msg3->cipher.len, buf);
   if(plaintext_sz == 0) {
     LOG_ERR("Error in decrypt ciphertext 3\n");
     return ERR_DECRYPT;
   }
-  LOG_DBG("P_3ae (%d):", (int)plaintext_sz);
+  LOG_INFO("P_3ae (%d)\n", (int)plaintext_sz);
   print_buff_8_dbg(buf, plaintext_sz);
 
   return 1;
 }
 int
-edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **ptr, uint8_t cipher_len, uint8_t *ad, cose_key_t *key)
+edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **ptr, size_t cipher_len, uint8_t *ad, cose_key_t *key)
 {
   uint8_t *sign_r = NULL;
   /*Get MAC from the decript msg*/
-  uint16_t sign_r_sz = edhoc_get_sign(ptr, &sign_r);
-  uint16_t rest_sz = cipher_len - (*ptr - buf);
-
+  size_t sign_r_sz = edhoc_get_sign(ptr, &sign_r);
+  size_t rest_sz = cipher_len - (*ptr - buf);
   /*Get the ad from the decript msg*/
   if(rest_sz) {
     rest_sz = edhoc_get_ad(ptr, ad);
@@ -1255,7 +1332,7 @@ edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **ptr, uint8_t cipher_len, 
   set_cose_key(&authenticate, &cose, key, ctx->curve);
   cose_print_key(&cose);
 
-  ctx->session.cred_x.buf = inf;
+  ctx->session.cred_x.buf = cred_x;
   ctx->session.cred_x.len = generate_cred_x(&cose, ctx->session.cred_x.buf);
 
   if(PART == PART_I) {
@@ -1263,9 +1340,11 @@ edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **ptr, uint8_t cipher_len, 
   } else if(PART == PART_R) {
     gen_prk_4x3m(ctx, &authenticate, 1);
   }
-
+  //uint8_t id_cred_x[MAX_BUFFER];
   ctx->session.id_cred_x.len = reconstruct_id_cred_x(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
   ctx->session.id_cred_x.buf = id_cred_x;
+
+  
 
 #if ((METHOD == METH0) || (METHOD == METH2))
 

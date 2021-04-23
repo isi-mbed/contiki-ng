@@ -118,6 +118,8 @@
 #define PRKI 1
 #define PRK_ID 2
 #define PRKI_2 3
+#define X5T 4
+#define X5CHAIN 5
 
 /**
  * \brief Set the authentication credential type
@@ -226,7 +228,7 @@
 #ifdef EDHOC_CONF_MAX_PAYLOAD
 #define MAX_DATA_LEN EDHOC_CONF_MAX_PAYLOAD
 #else
-#define MAX_DATA_LEN 254
+#define MAX_DATA_LEN 1024
 #endif
 
 /**
@@ -235,7 +237,7 @@
 #ifdef EDHOC_CONF_MAX_AD_SZ
 #define MAX_AD_SZ EDHOC_CONF_MAX_AD_SZ
 #else
-#define MAX_AD_SZ 16
+#define MAX_AD_SZ 1
 #endif
 
 /**

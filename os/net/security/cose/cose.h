@@ -117,11 +117,11 @@
 #define COSE_MAX_BUFFER COSE_CONF_MAX_BUFF
 #define MAX_CIPHER COSE_CONF_MAX_BUFF
 #else
-#define COSE_MAX_BUFFER 256
+#define COSE_MAX_BUFFER 1024
 /**
  * \brief Set the Maximum ciphertext length
  */
-#define MAX_CIPHER 256
+#define MAX_CIPHER 1024
 #endif
 
 /**
@@ -181,23 +181,42 @@ typedef struct sstr_cose {
 /**
  * \brief COSE_encrypt0 struct
  */
-typedef struct cose_encrypt0 {
-  uint8_t protected_header[COSE_MAX_BUFFER];
-  uint8_t protected_header_sz;
-  uint8_t unprotected_header[COSE_MAX_BUFFER];
-  uint8_t unprotected_header_sz;
-  uint8_t plaintext[COSE_MAX_BUFFER];
-  uint8_t plaintext_sz;
-  uint8_t ciphertext[MAX_CIPHER];
-  uint8_t ciphertext_sz;
+/*typedef struct cose_encrypt0 {
+  uint8_t protected_header[512];
+  size_t protected_header_sz;
+  uint8_t unprotected_header[12];
+  size_t unprotected_header_sz;
+  uint8_t plaintext[512];
+  size_t plaintext_sz;
+  //uint8_t ciphertext[512];
+  //size_t ciphertext_sz;
   uint8_t alg[MAX_ALG_SZ];
   uint8_t alg_sz;
   uint8_t key[KEY_LEN];
   uint8_t key_sz;
   uint8_t nonce[IV_LEN];
   uint8_t nonce_sz;
-  uint8_t external_aad[COSE_MAX_BUFFER];
-  uint8_t external_aad_sz;
+  uint8_t external_aad[512];
+  size_t external_aad_sz;
+} cose_encrypt0;*/
+
+typedef struct cose_encrypt0 {
+  bstr_cose protected_header;
+  //size_t protected_header_sz;
+  bstr_cose unprotected_header;
+  //size_t unprotected_header_sz;
+  uint8_t plaintext[MAX_CIPHER];
+  size_t plaintext_sz;
+  //uint8_t ciphertext[512];
+  //size_t ciphertext_sz;
+  uint8_t alg[MAX_ALG_SZ];
+  uint8_t alg_sz;
+  uint8_t key[KEY_LEN];
+  uint8_t key_sz;
+  uint8_t nonce[IV_LEN];
+  uint8_t nonce_sz;
+  bstr_cose external_aad;
+  //size_t external_aad_sz;
 } cose_encrypt0;
 
 /**
@@ -216,9 +235,12 @@ typedef struct cose_key {
   bstr_cose kid;  /* Key Identifier*/
   uint8_t kty;
   uint8_t crv;
+  uint8_t header;
   bstr_cose x;
   bstr_cose y;
   sstr_cose identity;
+  bstr_cose cert;
+  bstr_cose cert_hash;
   char name[8];  /* Identity */
 } cose_key;
 
@@ -277,7 +299,7 @@ uint8_t cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uin
  *  - The plaintext or ciphertext contained by the message to encrypt
  *  - Additional Authentication Data (AAD) contained by the message
  */
-uint8_t cose_encrypt0_set_content(cose_encrypt0 *enc, uint8_t *plain, uint16_t plain_sz, uint8_t *add, uint8_t add_sz);
+uint8_t cose_encrypt0_set_content(cose_encrypt0 *enc, uint8_t *plain, size_t plain_sz, uint8_t *add,size_t add_sz);
 
 /**
  * \brief Set the ciphertext of the encrypted message
@@ -289,7 +311,7 @@ uint8_t cose_encrypt0_set_content(cose_encrypt0 *enc, uint8_t *plain, uint16_t p
  *  Used before decryption operation to select:
  *  - The plaintext or ciphertext contained by the message to decrypt
  */
-uint8_t cose_encrypt0_set_ciphertext(cose_encrypt0 *enc, uint8_t *ciphertext, uint16_t ciphertext_sz);
+uint8_t cose_encrypt0_set_ciphertext(cose_encrypt0 *enc, uint8_t *ciphertext, size_t ciphertext_sz);
 
 /**
  * \brief Set the protected/unprotected bucket header information of the message
@@ -303,7 +325,7 @@ uint8_t cose_encrypt0_set_ciphertext(cose_encrypt0 *enc, uint8_t *ciphertext, ui
  *  - The protected bucket contains parameters about the current layer that are to be cryptographically protected
  *  - The unprotected bucket contains parameters about the current layer that are not cryptographically protected
  */
-void cose_encrypt0_set_header(cose_encrypt0 *enc, uint8_t *prot, uint16_t prot_sz, uint8_t *unp, uint16_t unp_sz);
+void cose_encrypt0_set_header(cose_encrypt0 *enc, uint8_t *prot, size_t prot_sz, uint8_t *unp, size_t unp_sz);
 
 /**
  * \brief  encrypt the COSE_encrypt0 struct using AEAD algorithm
@@ -315,7 +337,8 @@ void cose_encrypt0_set_header(cose_encrypt0 *enc, uint8_t *prot, uint16_t prot_s
  * The ciphertext is returned in the ciphertext element of the cose_encrypt0 struct tagged by CBOR tag 16 bytes.
  *
  */
-uint8_t cose_encrypt(cose_encrypt0 *enc);
+size_t
+cose_encrypt(cose_encrypt0 *enc);
 
 /**
  * \brief  decrypt the COSE_encrypt0 ciphertext using AEAD algorithm

@@ -60,7 +60,7 @@
 /*For use of block-wise post and answer */
 static coap_callback_request_state_t state;
 static uint8_t msg_num;
-static uint8_t send_sz;
+static size_t send_sz;
 static uint8_t *rx_ptr;
 static size_t rx_sz;
 static int pro;
@@ -201,7 +201,7 @@ client_response_handler(coap_callback_request_state_t *callback_state)
   }
 
   coap_set_option(callback_state->state.response, COAP_OPTION_BLOCK2);
-
+  LOG_DBG("Client response handler\n");
   LOG_DBG("Blockwise: block 2 response: Num: %" PRIu32
           ", More: %u, Size: %u, Offset: %" PRIu32 "\n",
           callback_state->state.response->block2_num,
@@ -218,7 +218,7 @@ client_response_handler(coap_callback_request_state_t *callback_state)
     client_block2_handler(callback_state->state.response, rx_ptr, &rx_sz, MAX_DATA_LEN);
   } else {
     client_block2_handler(callback_state->state.response, rx_ptr, &rx_sz, MAX_DATA_LEN);
-    ctx->rx_sz = (uint8_t)rx_sz;
+    ctx->rx_sz = (size_t)rx_sz;
     edhoc_state.val = CL_BLOCKING;
     pro = process_post(PROCESS_BROADCAST, edhoc_event, &edhoc_state);
   }
@@ -228,11 +228,11 @@ client_chunk_handler(coap_callback_request_state_t *callback_state)
 {
 
   if(callback_state->state.response == NULL) {
-    LOG_WARN("Request timed out chunk\n");
+    LOG_DBG("Request timed out chunk\n");
     return;
   }
   /*Check the 5-tuple information before retrive the state protocol*/
-
+  LOG_DBG("Chunk handler\n");
   LOG_DBG("Blockwise: block 2 response: Num: %" PRIu32
           ", More: %u, Size: %u, Offset: %" PRIu32 "\n",
           callback_state->state.response->block2_num,
@@ -280,6 +280,7 @@ edhoc_client_post_blocks()
     send_sz += (ctx->tx_sz - send_sz);
     rx_ptr = ctx->msg_rx;
     rx_sz = 0;
+    LOG_INFO("last ack no more blocks\n");
     coap_send_request(&state, state.state.remote_endpoint, state.state.request, client_response_handler);
     return 1;
   }
@@ -302,8 +303,8 @@ PROCESS_THREAD(edhoc_client_protocol, ev, data)
   switch(cli->state) {
   case RX_MSG2:
     LOG_DBG("--------------Handler message_2------------------\n");
-    LOG_DBG("RX message_2 (%d bytes):", ctx->rx_sz);
-    print_buff_8_dbg(ctx->msg_rx, ctx->rx_sz);
+    LOG_INFO("RX message_2 (%d bytes):", ctx->rx_sz);
+    print_buff_8_info(ctx->msg_rx, ctx->rx_sz);
 
     time = RTIMER_NOW();
     er = edhoc_handler_msg_2(&msg2, ctx, ctx->msg_rx, ctx->rx_sz);

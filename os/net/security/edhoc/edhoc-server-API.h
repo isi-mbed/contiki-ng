@@ -171,7 +171,7 @@ void edhoc_server_close();
  *  part. The EDHOC messages 1 and message 3 are transferred in POST requests and the EDHOC message 2
  *  is transferred in 2.04 (Changed) responses.
  */
-void edhoc_server_process(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, uint8_t len);
+void edhoc_server_process(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, size_t len);
 
 /**
  * \brief Set the Application Data to be carried on EDHOC message 2

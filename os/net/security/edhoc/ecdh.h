@@ -69,7 +69,7 @@
 #ifdef EDHOC_CONF_MAX_PAYLOAD
 #define MAX_PAYLOAD EDHOC_CONF_MAX_PAYLOAD
 #else
-#define MAX_PAYLOAD 256
+#define MAX_PAYLOAD 1256
 #endif
 #define MAX_KEY MAX_PAYLOAD
 
@@ -82,7 +82,7 @@
 #endif
 
 typedef struct session_key {
-  uint8_t k2_e[MAX_KEY];
+  //uint8_t k2_e[MAX_KEY];
   uint8_t prk_2e[ECC_KEY_BYTE_LENGHT];
   uint8_t prk_3e2m[ECC_KEY_BYTE_LENGHT];
   uint8_t prk_4x3m[ECC_KEY_BYTE_LENGHT];
