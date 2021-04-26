@@ -89,7 +89,7 @@ PROCESS_THREAD(edhoc_example_client, ev, data)
                             {0xa3,0xff,0x26,0x35,0x95,0xbe,0xb3,0x77,0xd1,0xa0,0xce,0x1d,0x04,0xda,0xd2,0xd4,0x09,0x66,0xac,0x6b,0xcb,0x62,0x20,0x51,0xb8,0x46,0x59,0x18,0x4d,0x5d,0x9a,0x32}};
 */
   /* X5T*/
-  cose_key_t auth_client = { NULL, { 0x24 }, 1,
+  const cose_key_t auth_client = { NULL, { 0x24 }, 1,
                              // { "Node_101" }, strlen("Node_101"), 
                              { "" }, 0,
                              KEY_TYPE, KEY_CRV,
@@ -117,7 +117,7 @@ PROCESS_THREAD(edhoc_example_client, ev, data)
                               553,
                               {0x70,0x5d,0x58,0x45,0xf3,0x6f,0xc6,0xa6}};  
  
-  cose_key_t auth_server = { NULL, { 0x07 }, 1,
+  const cose_key_t auth_server = { NULL, { 0x07 }, 1,
                              // { "Serv_A" }, strlen("Serv_A"), 
                              { "" }, 0,
                              KEY_TYPE, KEY_CRV,

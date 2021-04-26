@@ -87,7 +87,7 @@ void edhoc_create_key_list();
  *
  * Add new keys to the repository in a form of cose_key_t struct
  */
-void edhoc_add_key(cose_key_t *key);
+void edhoc_add_key(const cose_key_t *key);
 
 /**
  * \brief Check in the keys repository for the key with the specific kid

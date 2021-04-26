@@ -44,6 +44,8 @@
 /*To run EDHOC client as RPL node*/
 #define EDHOC_CONF_RPL_NODE 1
 
+#define EDHOC_CONF_C1 1
+
 
 /*May be necesary to defind one of the following macros when the UECC_ECC library is used and 
 the target is an embedded device*/ 

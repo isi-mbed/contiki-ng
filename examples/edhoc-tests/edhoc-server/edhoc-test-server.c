@@ -87,7 +87,7 @@ PROCESS_THREAD(edhoc_example_server, ev, data)
 #endif
 
   /*Set the other part authetication key and add in the storage */
-  cose_key_t auth_client = { NULL, { 0x24 }, 1,
+  const cose_key_t auth_client = { NULL, { 0x24 }, 1,
                              // { "Node_101" }, strlen("Node_101"), 
                              { "" }, 0,
                              KEY_TYPE, KEY_CRV,
@@ -118,7 +118,7 @@ PROCESS_THREAD(edhoc_example_server, ev, data)
                              553,
                               {0x70,0x5d,0x58,0x45,0xf3,0x6f,0xc6,0xa6}}; 
 
-  cose_key_t auth_server = { NULL,{ 0x07 }, 1,
+  const cose_key_t auth_server = { NULL,{ 0x07 }, 1,
                              //{ "Serv_A" }, strlen("Serv_A"), 
                              { "" }, 0,
                              KEY_TYPE, KEY_CRV,
@@ -153,7 +153,7 @@ PROCESS_THREAD(edhoc_example_server, ev, data)
   edhoc_add_key(&auth_server);
 
   LOG_DBG("server cert:");
-  print_buff_8_dbg(auth_server.cert,auth_server.cert_sz);
+  print_buff_8_dbg((uint8_t *)auth_server.cert,auth_server.cert_sz);
 
   /*edhoc_server_set_ad_2("MSG2!",strlen("MSG2!")); */
 

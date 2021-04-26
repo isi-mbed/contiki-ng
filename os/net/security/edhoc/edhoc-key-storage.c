@@ -121,7 +121,7 @@ edhoc_check_key_list_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **auth_key)
   return 0;
 }
 void
-edhoc_add_key(cose_key_t *key)
+edhoc_add_key(const cose_key_t *key)
 {
   cose_key_t *k = memb_alloc(&key_memb);
   list_add(key_list, k);

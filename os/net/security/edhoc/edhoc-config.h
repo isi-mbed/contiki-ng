@@ -122,6 +122,16 @@
 #define X5CHAIN 5
 
 /**
+ * \brief Set the Authentication method
+ */
+#ifdef EDHOC_CONF_C1
+#define CONF_C1 EDHOC_CONF_C1
+#else
+#define CONF_C1 0
+#endif
+
+
+/**
  * \brief Set the authentication credential type
  */
 #ifdef EDHOC_CONF_AUTHENT_TYPE

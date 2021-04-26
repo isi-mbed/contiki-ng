@@ -123,6 +123,19 @@ point_byte(uint8_t **in)
   (*in)++;
   return out;
 }
+
+int edhoc_get_nil(uint8_t **buffer){
+  uint8_t byte = get_byte(buffer);
+	if (byte == 0xF6){
+    return 0;
+  }
+  else{
+    (*buffer)--;
+    return 1;
+  }
+   	
+	
+}
 size_t
 edhoc_get_bytes(uint8_t **in, uint8_t **out)
 {
@@ -218,9 +231,14 @@ size_t
 edhoc_serialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, bool suit_array)
 {
   size_t size = 0;
-  size += cbor_put_unsigned(&buffer, msg->method);
-  /* uint8_t suit_num = 0;
- while((msg->suit_U[suit_num] < 0) && (suit_num < EDHOC_MAX_SUITS)){
+  if(CONF_C1){
+    LOG_INFO("Include C1\n");
+    //uint8_t val = 0xf6;
+    size += cbor_put_nil(&buffer);
+  }
+  size += cbor_put_unsigned(&buffer, msg->method);/*
+   uint8_t suit_num = 0;
+  while((msg->suit_U[suit_num] < 0) && (suit_num < EDHOC_MAX_SUITS)){
     suit_num++;
   }*/
   if((msg->suit_I.len > 1) && suit_array){
@@ -346,9 +364,14 @@ edhoc_deserialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, size_t buff_sz)
   uint8_t *p_out = NULL;
   size_t out_sz = 0;
   uint8_t *buff_f = buffer + buff_sz;
+  
+
 
   if(buffer < buff_f) {
-    unint = (int8_t)edhoc_get_unsigned(&buffer);
+    unint = (int8_t)edhoc_get_nil(&buffer);
+    //if(unint)
+      unint = (int8_t)edhoc_get_unsigned(&buffer);
+    
     msg->method = unint;
   }
   /* Get the suit */
@@ -506,6 +529,19 @@ edhoc_get_cred_x_from_cert(uint8_t *cert, size_t cert_sz, cose_key_t **key)
   *key = auth_key;
   return ECC_KEY_BYTE_LENGHT;
 }
+/*uint8_t
+edhoc_export_cred_x_from_cert(uint8_t *cert, size_t cert_sz, cose_key_t **key)
+{
+  LOG_DBG("CERT (%d):",cert_sz);
+  print_buff_8_dbg(cert,cert_sz);
+  cose_key_t *auth_key;
+  if(edhoc_check_key_list_cert(cert, cert_sz, &auth_key) == 0) {
+    LOG_ERR("The authentication certification is not in the list\n");
+    return ERR_NOT_ALLOWED_IDENTITY;
+  }
+  *key = auth_key;
+  return ECC_KEY_BYTE_LENGHT;
+}*/
 size_t
 edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
 {
