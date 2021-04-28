@@ -81,6 +81,25 @@ get_byte(uint8_t **in)
   (*in)++;
   return out;
 }
+/*int16_t
+edhoc_get_unsigned(uint8_t **in)
+{
+  uint8_t byte = get_byte(in);
+
+  if(byte < 0x18) {
+
+    return byte;
+  } else if(byte == 0x18) {
+    return get_byte(in);
+  } else if(byte == 0x18) {
+    retu
+  } 
+  else {
+    LOG_ERR("get not unsigned\n ");
+     (*in)--;
+    return -1;
+  }
+}*/
 int16_t
 edhoc_get_unsigned(uint8_t **in)
 {
@@ -425,8 +444,8 @@ edhoc_deserialize_msg_2(edhoc_msg_2 *msg, unsigned char *buffer, size_t buff_sz)
 {
   uint8_t data_sz = 0;
   msg->data_2.buf = buffer;
- // LOG_INFO("msg2 (%d):",buff_sz);
-  //print_buff_8_info(buffer,buff_sz);
+  LOG_INFO("msg2 (%d):",buff_sz);
+  print_buff_8_info(buffer,buff_sz);
 
   uint8_t var = ((4 * METHOD) + CORR) % 4;
   if((var == 3) || (var == 1)) {

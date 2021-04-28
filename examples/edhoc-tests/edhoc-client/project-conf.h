@@ -2,7 +2,7 @@
 #define PROJECT_CONF_H_
 
 #define LPM_CONF_MAX_PM 1
-#define IEEE802154_CONF_PANID 0x0a0a
+#define IEEE802154_CONF_PANID 0x0a0b
 
 #define EDHOC_CONF_TIMEOUT 100000
 
@@ -15,8 +15,11 @@
 #define EDHOC_CID 0x16
 
 /*Define the coap server to conect with*/
-#define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:9fec]"
 //#define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:9fec]"
+
+//#define EDHOC_CONF_SERVER_EP "coap://[64:ff9b::c3fb:3acb]"
+//#define EDHOC_CONF_SERVER_EP "coap://[64:ff9b::5c22:11f3]"
+#define EDHOC_CONF_SERVER_EP "coap://[fe80::212:4b00:615:9fec]"
 //#define EDHOC_CONF_SERVER_EP "coap://[fd01::202:2:2:2]" /* Server IP for Cooja simulator*/
 
 
@@ -42,9 +45,9 @@
 //#define EDHOC_CONF_ECC UECC_ECC
 
 /*To run EDHOC client as RPL node*/
-#define EDHOC_CONF_RPL_NODE 1
+//#define EDHOC_CONF_RPL_NODE 1
 
-#define EDHOC_CONF_C1 1
+//#define EDHOC_CONF_C1 1
 
 
 /*May be necesary to defind one of the following macros when the UECC_ECC library is used and 

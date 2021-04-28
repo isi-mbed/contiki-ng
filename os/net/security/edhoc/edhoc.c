@@ -213,7 +213,7 @@ reconstruct_id_cred_x(uint8_t *cred_in, size_t cred_in_sz)
   return size;
 }
 static size_t
-generate_info(uint8_t *info, uint8_t *th, uint8_t th_sz, char *label, uint8_t label_sz, uint8_t lenght)
+generate_info(uint8_t *info, uint8_t *th, uint8_t th_sz, char *label, uint8_t label_sz, uint16_t lenght)
 {
   size_t size = 0;
   size = cbor_put_array(&info, 4);
@@ -400,6 +400,8 @@ edhoc_kdf(uint8_t *result, uint8_t *key, bstr th, char *label, uint16_t label_sz
 {
   /* generate info for K */
   uint16_t info_sz = generate_info(inf, th.buf, th.len, label, label_sz, lenght);
+  LOG_INFO("info (%d):",info_sz);
+  print_buff_8_info(inf,info_sz);
   int16_t er = hkdf_expand(key, ECC_KEY_BYTE_LENGHT, inf, info_sz, result, lenght);
   if(er < 0) {
     return er;
@@ -510,8 +512,8 @@ gen_gxy(edhoc_context_t *ctx)
     LOG_ERR("error in generate shared secret\n ");
     return 0;
   }
-  LOG_DBG("GXY (%d bytes):", ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(buf, ECC_KEY_BYTE_LENGHT);
+  LOG_INFO("GXY (%d bytes):", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(buf, ECC_KEY_BYTE_LENGHT);
   return 1;
 }
 static uint8_t
@@ -529,22 +531,20 @@ gen_prk_2e(edhoc_context_t *ctx)
     LOG_ERR("Error in extarct prk_2e\n");
     return 0;
   }
-  LOG_DBG("PRK_2e (%d  bytes): ", ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(ctx->eph_key.prk_2e, ECC_KEY_BYTE_LENGHT);
+  LOG_INFO("PRK_2e (%d  bytes): ", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->eph_key.prk_2e, ECC_KEY_BYTE_LENGHT);
   return 1;
 }
 /*use PRK_2e */
 static uint8_t
 gen_k_2e(edhoc_context_t *ctx, uint8_t *k_2e, uint16_t lenght)
-//gen_k_2e(edhoc_context_t *ctx, uint16_t lenght)
 {
   int8_t er = 0;
   #if EDHOC_VERSION == EDHOC_02 
     LOG_DBG("k_2e\n");
      er = edhoc_kdf(k_2e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
-   // er = edhoc_kdf(ctx->eph_key.k2_e, ctx->eph_key.prk_2e, ctx->session.th, "K_2e", strlen("K_2e"), lenght);
   #elif EDHOC_VERSION == EDHOC_04
-    LOG_DBG("KEYSTREAM_2\n");
+    LOG_INFO("KEYSTREAM_2\n");
     er = edhoc_kdf(k_2e, ctx->eph_key.prk_2e, ctx->session.th, "KEYSTREAM_2", strlen("KEYSTREAM_2"), lenght);
   #endif
   if(er < 1) {
@@ -590,8 +590,8 @@ gen_prk_4x3m(edhoc_context_t *ctx, ecc_key *key_authenticate, uint8_t gen)
   } else {
     er = generate_IKM(ctx->eph_key.gx, ctx->eph_key.gy, key_authenticate->private_key, giy, ctx->curve); /*G_IY = G_Y and I //Initiator (U):  //Initiator U */
   }
-  LOG_DBG("G_IY (ECDH shared secret) (%d bytes):", ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(giy, ECC_KEY_BYTE_LENGHT);
+  LOG_INFO("G_IY (ECDH shared secret) (%d bytes):", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(giy, ECC_KEY_BYTE_LENGHT);
   if(er == 0) {
     LOG_ERR("error in generate shared secret for prk_4x3m\n ");
     return 0;
@@ -601,8 +601,8 @@ gen_prk_4x3m(edhoc_context_t *ctx, ecc_key *key_authenticate, uint8_t gen)
     LOG_ERR("error in extact for prk_3e2m\n");
     return 0;
   }
-  LOG_DBG("PRK_4x3m (%d bytes): ", ECC_KEY_BYTE_LENGHT);
-  print_buff_8_dbg(ctx->eph_key.prk_4x3m, ECC_KEY_BYTE_LENGHT);
+  LOG_INFO("PRK_4x3m (%d bytes): ", ECC_KEY_BYTE_LENGHT);
+  print_buff_8_info(ctx->eph_key.prk_4x3m, ECC_KEY_BYTE_LENGHT);
   return 1;
 }
 static void
@@ -729,8 +729,8 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
     return 0;
   }
   cose->key_sz = KEY_DATA_LENGHT;
-  LOG_DBG("K_3ae (%d bytes):", (int)cose->key_sz);
-  print_buff_8_dbg(cose->key, cose->key_sz);
+  LOG_INFO("K_3ae (%d bytes):", (int)cose->key_sz);
+  print_buff_8_info(cose->key, cose->key_sz);
 
   /* generate  IV */
   LOG_DBG("IV_3ae\n");
@@ -740,8 +740,8 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
     return 0;
   }
   cose->nonce_sz = IV_LENGHT;
-  LOG_DBG("IV_3ae (%d bytes):", (int)cose->nonce_sz);
-  print_buff_8_dbg(cose->nonce, cose->nonce_sz);
+  LOG_INFO("IV_3ae (%d bytes):", (int)cose->nonce_sz);
+  print_buff_8_info(cose->nonce, cose->nonce_sz);
 
   /* COSE encrypt0 set header */
   cose_encrypt0_set_header(cose, NULL, 0, NULL, 0);

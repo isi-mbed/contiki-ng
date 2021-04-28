@@ -178,7 +178,7 @@ cbor_put_map(uint8_t **buffer, uint8_t elements)
 
   return 1;
 }
-int
+/*int
 cbor_put_unsigned(uint8_t **buffer, uint8_t value)
 {
   if(value > 0x17) {
@@ -187,6 +187,35 @@ cbor_put_unsigned(uint8_t **buffer, uint8_t value)
     (**buffer) = (value);
     (*buffer)++;
     return 2;
+  }
+  (**buffer) = (value);
+  (*buffer)++;
+  return 1;
+}*/
+
+int
+cbor_put_unsigned(uint8_t **buffer, size_t value)
+{
+  size_t val = value;
+  if((value < 256) &&  (value > 0x17)) {
+    (**buffer) = (0x18);
+    (*buffer)++;
+    (**buffer) = (value);
+    (*buffer)++;
+    return 2;
+  }
+  else if((value < 65535) && (value > 255)){
+    (**buffer) = (0x19);
+    (*buffer)++;
+    (**buffer) = (val>>8);
+    val = value;
+    printf("%u\n",**buffer);
+    (*buffer)++;
+    (**buffer) = val; 
+    printf("%u\n",**buffer);
+    (*buffer)++;
+    return 3;
+      
   }
   (**buffer) = (value);
   (*buffer)++;

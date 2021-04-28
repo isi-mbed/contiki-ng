@@ -4,7 +4,7 @@
 
 #define LPM_CONF_MAX_PM 1
 
-#define IEEE802154_CONF_PANID 0x0a0a
+#define IEEE802154_CONF_PANID 0x0a0b
 #define EDHOC_CONF_TIMEOUT 100000
 /* Mandatory EDHOC definitions on Server*/
 /* Define one kind of the following kind of identifiaction for the authentication key*/
@@ -38,7 +38,7 @@
 
 
 /*To run EDHOC server as RPL node*/
-#define EDHOC_CONF_RPL_NODE 1
+//#define EDHOC_CONF_RPL_NODE 1
 
 /* Definde the node as Border Router*/
 /*#ifndef WEBSERVER_CONF_CFS_CONNS
