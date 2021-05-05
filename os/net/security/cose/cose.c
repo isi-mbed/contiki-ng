@@ -193,7 +193,7 @@ cose_decrypt(cose_encrypt0 *enc)
   LOG_INFO("protected header (%d bytes)\n", enc->protected_header.len);
  
   LOG_INFO("(CBOR-encoded AAD) (%d bytes)\n", str_sz);
-  //cose_print_buff_8_info(str_encode, str_sz);
+  cose_print_buff_8_info(str_encode, str_sz);
   CCM_STAR.set_key(enc->key);
   //enc->plaintext_sz = enc->ciphertext_sz - (size_t)TAG_LEN;
   //cose_print_buff_8_info(enc->ciphertext, enc->ciphertext_sz);
