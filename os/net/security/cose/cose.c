@@ -188,7 +188,7 @@ cose_decrypt(cose_encrypt0 *enc)
   
   size_t str_sz = encode_enc_structure(str, str_encode);
   LOG_INFO("encript in decript(%d)\n",enc->plaintext_sz );
-  cose_print_buff_8_dbg(enc->plaintext,enc->plaintext_sz);
+  cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz);
   LOG_INFO("external aad (%d bytes)\n", enc->external_aad.len);
   LOG_INFO("protected header (%d bytes)\n", enc->protected_header.len);
  
@@ -208,7 +208,7 @@ cose_decrypt(cose_encrypt0 *enc)
  // LOG_INFO("TAG 2:");
  // cose_print_buff_8_info(&(enc->ciphertext[enc->plaintext_sz]), TAG_LEN);
   LOG_INFO("plaintext(%d)\n",enc->plaintext_sz );
-  cose_print_buff_8_dbg(enc->plaintext,enc->plaintext_sz);
+  cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz);
   if(memcmp(tag, &(enc->plaintext[enc->plaintext_sz - (size_t)TAG_LEN]), TAG_LEN) != 0) {
   //if(memcmp(tag, &(enc->ciphertext[enc->plaintext_sz]), TAG_LEN) != 0) {
     LOG_ERR("Decrypt msg error\n");
