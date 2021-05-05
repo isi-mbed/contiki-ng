@@ -233,7 +233,7 @@ cose_encrypt(cose_encrypt0 *enc)
     LOG_INFO("protected header (%d bytes)\n", enc->protected_header.len);
   //cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz); 
   LOG_INFO("(CBOR-encoded AAD) (%d bytes)\n", str_sz);
- // cose_print_buff_8_info(str_encode, str_sz);
+  cose_print_buff_8_info(str_encode, str_sz);
 
   /*TO DO: check the algorithm selected in enc */
   if(enc->key_sz != KEY_LEN || enc->nonce_sz != IV_LEN || enc->plaintext_sz > COSE_MAX_BUFFER || str_sz > (2 * COSE_MAX_BUFFER)) {
