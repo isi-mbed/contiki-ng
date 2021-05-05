@@ -188,7 +188,7 @@ cose_decrypt(cose_encrypt0 *enc)
   
   size_t str_sz = encode_enc_structure(str, str_encode);
   LOG_INFO("encript in decript(%d)\n",enc->plaintext_sz );
-  cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz);
+  //cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz);
   LOG_INFO("external aad (%d bytes)\n", enc->external_aad.len);
   LOG_INFO("protected header (%d bytes)\n", enc->protected_header.len);
  
@@ -228,12 +228,12 @@ cose_encrypt(cose_encrypt0 *enc)
 
   //uint8_t str_encode[2 * COSE_MAX_BUFFER];
   size_t str_sz = encode_enc_structure(str, str_encode);
-  LOG_INFO("plaintext(%d)\n",enc->plaintext_sz );
-    LOG_INFO("external aad (%d bytes)\n", enc->external_aad.len);
-    LOG_INFO("protected header (%d bytes)\n", enc->protected_header.len);
+ // LOG_INFO("plaintext(%d)\n",enc->plaintext_sz );
+   // LOG_INFO("external aad (%d bytes)\n", enc->external_aad.len);
+  //  LOG_INFO("protected header (%d bytes)\n", enc->protected_header.len);
   //cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz); 
-  LOG_INFO("(CBOR-encoded AAD) (%d bytes)\n", str_sz);
-  cose_print_buff_8_info(str_encode, str_sz);
+  //LOG_INFO("(CBOR-encoded AAD) (%d bytes)\n", str_sz);
+  //cose_print_buff_8_info(str_encode, str_sz);
 
   /*TO DO: check the algorithm selected in enc */
   if(enc->key_sz != KEY_LEN || enc->nonce_sz != IV_LEN || enc->plaintext_sz > COSE_MAX_BUFFER || str_sz > (2 * COSE_MAX_BUFFER)) {
@@ -245,8 +245,8 @@ cose_encrypt(cose_encrypt0 *enc)
   //CCM_STAR.aead(enc->nonce, enc->ciphertext, enc->plaintext_sz, str_encode, str_sz, &enc->ciphertext[enc->plaintext_sz], TAG_LEN, 1);
   CCM_STAR.aead(enc->nonce, enc->plaintext, enc->plaintext_sz, str_encode, str_sz, &enc->plaintext[enc->plaintext_sz], TAG_LEN, 1);
   enc->plaintext_sz = enc->plaintext_sz + TAG_LEN;
-  LOG_INFO("encript in encrypt(%d)\n",enc->plaintext_sz );
-  cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz);
+ // LOG_INFO("encript in encrypt(%d)\n",enc->plaintext_sz );
+ // cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz);
   //LOG_INFO("TAG (%d):",TAG_LEN);
   
 
