@@ -246,7 +246,10 @@ cose_encrypt(cose_encrypt0 *enc)
   CCM_STAR.aead(enc->nonce, enc->plaintext, enc->plaintext_sz, str_encode, str_sz, &enc->plaintext[enc->plaintext_sz], TAG_LEN, 1);
   enc->plaintext_sz = enc->plaintext_sz + TAG_LEN;
   LOG_INFO("encript in encrypt(%d)\n",enc->plaintext_sz );
-  cose_print_buff_8_dbg(enc->plaintext,enc->plaintext_sz);
+  cose_print_buff_8_info(enc->plaintext,enc->plaintext_sz);
+  //LOG_INFO("TAG (%d):",TAG_LEN);
+  
+
   //enc->ciphertext_sz = enc->plaintext_sz + TAG_LEN;
   return enc->plaintext_sz;
   //return enc->ciphertext_sz;
