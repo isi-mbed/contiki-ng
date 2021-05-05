@@ -235,8 +235,8 @@ PROCESS_THREAD(edhoc_server, ev, data){
       print_buff_8_dbg(msg_rx, msg_rx_len);
       time = RTIMER_NOW();
       er = edhoc_handler_msg_3(&msg3, ctx, msg_rx, msg_rx_len);*/
-      LOG_DBG("RX message_3 (%d bytes):", (int)ctx->rx_sz);
-      print_buff_8_dbg(ctx->msg_rx, ctx->rx_sz);
+      LOG_INFO("RX message_3 (%d bytes):", (int)ctx->rx_sz);
+      print_buff_8_info(ctx->msg_rx, ctx->rx_sz);
       time = RTIMER_NOW();
       er = edhoc_handler_msg_3(&msg3, ctx, ctx->msg_rx, ctx->rx_sz);
       time = RTIMER_NOW() - time;
