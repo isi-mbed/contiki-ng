@@ -382,8 +382,8 @@ gen_th3(edhoc_context_t *ctx, uint8_t *data, uint16_t data_sz, uint8_t *cipherte
   h_sz += cbor_put_bytes(&ptr, ciphertext, ciphertext_sz);
   memcpy(buf2 + h_sz, data, data_sz);
   h_sz += data_sz;
-  LOG_DBG("input to calculate TH_3 (CBOR Sequence) (%d bytes):", (int)h_sz);
-  print_buff_8_dbg(buf2, h_sz);
+  LOG_INFO("input to calculate TH_3 (CBOR Sequence) (%d bytes):", (int)h_sz);
+  print_buff_8_info(buf2, h_sz);
 
   /*Compute TH */
   uint8_t er = compute_TH(buf2, h_sz, ctx->session.th.buf, ctx->session.th.len);
