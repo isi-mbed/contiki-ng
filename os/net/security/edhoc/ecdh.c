@@ -95,6 +95,8 @@ uint8_t
 compute_TH(uint8_t *in, uint8_t in_sz, uint8_t *hash, uint8_t hash_sz)
 {
   int er = sha256(in, in_sz, hash);
+  LOG_INFO("TH (%d):", hash_sz);
+  print_buff_8_info(hash, hash_sz);
   return er;
 }
 uint8_t

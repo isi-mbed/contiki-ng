@@ -369,8 +369,8 @@ gen_th2(edhoc_context_t *ctx, uint8_t *data, uint16_t data_sz, uint8_t *msg, uin
     LOG_ERR("ERR COMPUTED TH2\n ");
     return ERR_CODE;
   }
-  LOG_DBG("TH_2 (%d bytes):", (int)ctx->session.th.len);
-  print_buff_8_dbg(ctx->session.th.buf, ctx->session.th.len);
+  LOG_INFO("TH_2 (%d bytes):", (int)ctx->session.th.len);
+  print_buff_8_info(ctx->session.th.buf, ctx->session.th.len);
   return 0;
 }
 static uint8_t
