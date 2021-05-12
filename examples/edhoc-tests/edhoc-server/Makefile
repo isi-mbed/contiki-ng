@@ -12,10 +12,10 @@ CFLAGS += -DuECC_OPTIMIZATION_LEVEL=4
 CFLAGS += -DuECC_SQUARE_FUNC=1 
 
 CONTIKI = ../../..
-#MODULES += $(CONTIKI_NG_SERVICES_DIR)/rpl-border-router
+MODULES += $(CONTIKI_NG_SERVICES_DIR)/rpl-border-router
 # Include webserver module
-#MODULES_REL += webserver
-#MODULES_REL +=  ../../rpl-border-router/webserver
+MODULES_REL += webserver
+MODULES_REL +=  ../../rpl-border-router/webserver
 
 
 
