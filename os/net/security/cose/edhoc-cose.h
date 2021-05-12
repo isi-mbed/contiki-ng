@@ -45,8 +45,8 @@
  * COSE_Encrypt0 structures used by EDHOC protocol.
  **/
 
-#ifndef _COSE_H_
-#define _COSE_H_
+#ifndef _EDHOC_COSE_H_
+#define _EDHOC_COSE_H_
 
 #include <stdint.h>
 #include <stddef.h>
@@ -284,7 +284,7 @@ void cose_encrypt0_finalize(cose_encrypt0 *enc);
  *  - the nonce: It is the Initialization Vector (IV) value
  *
  */
-uint8_t cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key_sz, uint8_t *nonce, uint16_t nonce_sz);
+uint8_t cose_encrypt0_set_keys(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key_sz, uint8_t *nonce, uint16_t nonce_sz);
 
 /**
  * \brief Set the plaintext and aad (additional authentication data) of the message
@@ -299,7 +299,7 @@ uint8_t cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uin
  *  - The plaintext or ciphertext contained by the message to encrypt
  *  - Additional Authentication Data (AAD) contained by the message
  */
-uint8_t cose_encrypt0_set_content(cose_encrypt0 *enc, uint8_t *plain, size_t plain_sz, uint8_t *add,size_t add_sz);
+uint8_t cose_encrypt0_set_contents(cose_encrypt0 *enc, uint8_t *plain, size_t plain_sz, uint8_t *add,size_t add_sz);
 
 /**
  * \brief Set the ciphertext of the encrypted message

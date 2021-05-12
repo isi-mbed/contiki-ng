@@ -61,6 +61,7 @@
 /* EDHOC process states */
 #define SERV_FINISHED 1
 #define SERV_RESTART 2
+#define SERV_NEW_MSG 3
 
 /**
  * \brief EDHOC context struct used in the EDHOC protocol
@@ -199,5 +200,11 @@ uint8_t edhoc_server_get_ad_1(char *buff);
  * This function copy on the buff the Application data from the EDHOC message 3 received
  */
 uint8_t edhoc_server_get_ad_3(char *buff);
+
+
+void
+edhoc_server_kill();
+void
+edhoc_post_new_msg(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, size_t len);
 #endif /* _EDHOC_SERVER_API_H_ */
 /** @} */

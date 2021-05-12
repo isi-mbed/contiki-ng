@@ -42,7 +42,7 @@
 #include "lib/random.h"
 #include <string.h>
 #include <stdio.h>
-#include "cose.h"
+#include "edhoc-cose.h"
 #include "edhoc-key-storage.h"
 #include "hmac-sha.h"
 
@@ -73,11 +73,11 @@
 #endif
 #define MAX_KEY MAX_PAYLOAD
 
-#if ECC == UECC_ECC
+#if uECC == 0
 #include "ecc-uecc.h"
 #endif
 
-#if ECC == CC2538_ECC
+#if uECC == 1
 #include "ecc-cc2538.h"
 #endif
 

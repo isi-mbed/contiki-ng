@@ -39,6 +39,10 @@
 #include "sys/pt.h"
 #include "sys/rtimer.h"
 
+#ifdef WITH_OSCORE
+#include "oscore.h"
+#include "oscore-context.h"
+#endif /* WITH_OSCORE */
 /* EDHOC Client protocol states */
 #define NON_MSG 0
 #define RX_MSG1 1
@@ -68,6 +72,8 @@ static cose_key_t key;
 static uint8_t *pt = NULL;
 static edhoc_msg_3 msg3;
 PROCESS(edhoc_server, "Edhoc Server");
+serv_data_t serv_data;
+process_data_t dat;
 
 int8_t
 edhoc_server_callback(process_event_t ev, void *data)
@@ -78,6 +84,10 @@ edhoc_server_callback(process_event_t ev, void *data)
   if((ev == new_ecc_event) && (new_ecc.val == SERV_RESTART)) {
     LOG_DBG("server callback: SERV_RESTART\n");
     return SERV_RESTART;
+  }
+  if((ev == new_ecc_event) && (new_ecc.val == SERV_NEW_MSG)) {
+    LOG_INFO("server callback: SERV_NEW_MSG\n");
+    return SERV_NEW_MSG;
   }
   return 0;
 }
@@ -134,6 +144,7 @@ edhoc_server_init()
 {
   LOG_INFO("SERVER: Coap active resource\n");
   coap_activate_resource(&res_edhoc, WELL_KNOWN);
+  //coap_activate_resource(&res_hello, "test/hello");
   new_ecc_event = process_alloc_event();
 }
 void
@@ -142,11 +153,25 @@ edhoc_server_close()
   edhoc_finalize(ctx);
 }
 void
+edhoc_post_new_msg(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, size_t len){
+  serv_data.request = req;
+  serv_data.response = res;
+  serv_data.serv = ser;
+  dat_ptr = &serv_data;
+  dat = dat_ptr;
+  memcpy(ctx->msg_rx, msg, len);
+  ctx->rx_sz = len;
+  process_post(&edhoc_server,new_ecc_event,dat);
+  LOG_INFO("post new msg\n");
+}
+void
 edhoc_server_process(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, size_t len)
 {
-  serv_data_t serv_data = { req, res, ser };
+  serv_data.request = req;
+  serv_data.response = res;
+  serv_data.serv = ser;
   dat_ptr = &serv_data;
-  process_data_t dat = dat_ptr;
+  dat = dat_ptr;
   /*memcpy(msg_rx, msg, len);
   msg_rx_len = len;*/
   memcpy(ctx->msg_rx, msg, len);
@@ -156,8 +181,14 @@ edhoc_server_process(coap_message_t *req, coap_message_t *res, edhoc_server_t *s
     process_run();
   }
 }
+
+void
+edhoc_server_kill(){
+  process_exit(&edhoc_server);
+}
 PROCESS_THREAD(edhoc_server, ev, data){
   PROCESS_BEGIN();
+  //while(1){
   request = ((struct serv_data_t *)data)->request;
   response = ((struct serv_data_t *)data)->response;
   serv = ((struct serv_data_t *)data)->serv;
@@ -334,5 +365,13 @@ PROCESS_THREAD(edhoc_server, ev, data){
             response->block2_offset);
     LOG_DBG("len: %d\n",response->payload_len);
   }
+  /*PROCESS_WAIT_EVENT();
+  int8_t re = edhoc_server_callback(ev, &data);
+  while(re != SERV_NEW_MSG){
+      watchdog_periodic();
+      PROCESS_WAIT_EVENT();
+      re = edhoc_server_callback(ev, &data);
+  }*/
+  //}
   PROCESS_END();
 }

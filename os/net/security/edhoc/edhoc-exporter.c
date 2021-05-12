@@ -40,7 +40,7 @@
 #include "contiki-lib.h"
 
 void
-edhoc_exporter_print_oscore_ctx(oscore_ctx_t *osc)
+edhoc_exporter_print_oscore_ctx(edhoc_oscore_ctx_t *osc)
 {
   LOG_PRINT("Initiator client CID: 0x%02x\n", osc->client_ID);
   LOG_PRINT("Responder server CID: 0x%02x\n", osc->server_ID);
@@ -74,7 +74,7 @@ edhoc_exporter(uint8_t *result, edhoc_context_t *ctx, char *label, uint8_t label
   return er;
 }
 int8_t
-edhoc_exporter_oscore(oscore_ctx_t *osc, edhoc_context_t *ctx)
+edhoc_exporter_oscore(edhoc_oscore_ctx_t *osc, edhoc_context_t *ctx)
 {
   if(gen_th4(ctx) < 0) {
     LOG_ERR("error code at exporter(%d) \n ", ERR_CODE);

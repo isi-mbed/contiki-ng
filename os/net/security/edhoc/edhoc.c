@@ -382,8 +382,8 @@ gen_th3(edhoc_context_t *ctx, uint8_t *data, uint16_t data_sz, uint8_t *cipherte
   h_sz += cbor_put_bytes(&ptr, ciphertext, ciphertext_sz);
   memcpy(buf2 + h_sz, data, data_sz);
   h_sz += data_sz;
-  LOG_INFO("input to calculate TH_3 (CBOR Sequence) (%d bytes):", (int)h_sz);
-  print_buff_8_info(buf2, h_sz);
+  LOG_DBG("input to calculate TH_3 (CBOR Sequence) (%d bytes):", (int)h_sz);
+  print_buff_8_dbg(buf2, h_sz);
 
   /*Compute TH */
   uint8_t er = compute_TH(buf2, h_sz, ctx->session.th.buf, ctx->session.th.len);
@@ -416,7 +416,7 @@ set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad ,size_t ad_sz, ui
   print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
   cose_encrypt0_set_header(cose, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len, NULL, 0);
   /*CBOR The TH2 */
-  cose_encrypt0_set_content(cose, NULL, 0, NULL, 0);
+  cose_encrypt0_set_contents(cose, NULL, 0, NULL, 0);
   uint8_t th_cbor[ECC_KEY_BYTE_LENGHT + 2];
   uint8_t *th_ptr = th_cbor;
   size_t th_cbor_sz = cbor_put_bytes(&th_ptr, ctx->session.th.buf, ctx->session.th.len);
@@ -624,7 +624,7 @@ decrypt_ciphertext_3(edhoc_context_t *ctx, uint8_t *ciphertext, size_t ciphertex
   memcpy(th3_ptr, ctx->session.th.buf, ctx->session.th.len);
   cose->external_aad_sz = ctx->session.th.len;
 */
-  cose_encrypt0_set_content(cose,NULL,0, ctx->session.th.buf,ctx->session.th.len);
+  cose_encrypt0_set_contents(cose,NULL,0, ctx->session.th.buf,ctx->session.th.len);
  /* cose->external_aad.buf = buf;
   memcpy(cose->external_aad.buf, ctx->session.th.buf, ctx->session.th.len);
   cose->external_aad.len = ctx->session.th.len;*/
@@ -713,7 +713,7 @@ gen_ciphertext_3(edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t *mac
   cose->external_aad_sz = ctx->session.th.len;
   memcpy(th3_ptr, ctx->session.th.buf, ctx->session.th.len);
 */
-  cose_encrypt0_set_content(cose,NULL,0, ctx->session.th.buf,ctx->session.th.len);
+  cose_encrypt0_set_contents(cose,NULL,0, ctx->session.th.buf,ctx->session.th.len);
  /*uint8_t *th3_ptr = cose->external_aad;
   cose->external_aad_sz = ctx->session.th.len;
   memcpy(th3_ptr, ctx->session.th.buf, ctx->session.th.len);*/

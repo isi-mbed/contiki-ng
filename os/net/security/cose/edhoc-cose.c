@@ -35,7 +35,7 @@
  *         Lidia Pocero <pocero@isi.gr>
  */
 
-#include "cose.h"
+#include "edhoc-cose.h"
 #include "contiki-lib.h"
 #include <os/lib/ccm-star.h>
 #include <string.h>
@@ -92,7 +92,7 @@ cose_print_key(cose_key *cose)
   cose_print_buff_8_dbg(cose->cert_hash.buf, cose->cert_hash.len);
 }
 uint8_t
-cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key_sz, uint8_t *nonce, uint16_t nonce_sz)
+cose_encrypt0_set_keys(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key_sz, uint8_t *nonce, uint16_t nonce_sz)
 {
   if(key_sz != KEY_LEN) {
     return 0;
@@ -107,7 +107,7 @@ cose_encrypt0_set_key(cose_encrypt0 *enc, uint8_t alg, uint8_t *key, uint8_t key
   return 1;
 }
 uint8_t
-cose_encrypt0_set_content(cose_encrypt0 *enc, uint8_t *plain, size_t plain_sz, uint8_t *add, size_t add_sz)
+cose_encrypt0_set_contents(cose_encrypt0 *enc, uint8_t *plain, size_t plain_sz, uint8_t *add, size_t add_sz)
 {
   if(plain_sz > COSE_MAX_BUFFER) {
     return 0;
@@ -193,7 +193,7 @@ cose_decrypt(cose_encrypt0 *enc)
   LOG_INFO("protected header (%d bytes)\n", enc->protected_header.len);
  
   LOG_INFO("(CBOR-encoded AAD) (%d bytes)\n", str_sz);
-  cose_print_buff_8_info(str_encode, str_sz);
+  cose_print_buff_8_dbg(str_encode, str_sz);
   CCM_STAR.set_key(enc->key);
   //enc->plaintext_sz = enc->ciphertext_sz - (size_t)TAG_LEN;
   //cose_print_buff_8_info(enc->ciphertext, enc->ciphertext_sz);
