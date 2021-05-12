@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 2017, RISE SICS
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,32 +26,16 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * This file is part of the Contiki operating system.
+ *
  */
 
-/**
- * \file
- *         Cose, heade file for log configuration
- * \author
- *         Lidia Pocero <pocero@isi.gr>
- */
+#include "contiki.h"
+#include "net/ipv6/uip.h"
+#include "net/ipv6/uip-ds6.h"
 
-#include "cose-log.h"
+extern uint8_t prefix_set;
 
-void
-cose_print_buff(uint8_t *buff, size_t len)
-{
-
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
-void
-cose_print_char(uint8_t *buff, size_t len)
-{
-
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
+void rpl_border_router_init(void);
+void print_local_addresses(void);
+void set_prefix_64(uip_ipaddr_t *prefix_64);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 2011, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,33 +25,24 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
  * \file
- *         Cose, heade file for log configuration
+ *         Sets up some commands for the border router
  * \author
- *         Lidia Pocero <pocero@isi.gr>
+ *         Niclas Finne <nfi@sics.se>
+ *         Joakim Eriksson <joakime@sics.se>
  */
 
-#include "cose-log.h"
+#ifndef BORDER_ROUTER_CMDS_H_
+#define BORDER_ROUTER_CMDS_H_
 
-void
-cose_print_buff(uint8_t *buff, size_t len)
-{
+#define CMD_CONTEXT_RADIO  0
+#define CMD_CONTEXT_STDIO  1
 
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
-void
-cose_print_char(uint8_t *buff, size_t len)
-{
+extern uint8_t command_context;
 
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
+PROCESS_NAME(border_router_cmd_process);
+
+#endif /* BORDER_ROUTER_CMDS_H_ */

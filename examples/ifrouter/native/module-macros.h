@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 2011, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,33 +25,19 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
-/**
- * \file
- *         Cose, heade file for log configuration
- * \author
- *         Lidia Pocero <pocero@isi.gr>
- */
+/* use a non-default network driver */
+#define NETSTACK_CONF_NETWORK sicslowpan_driver
 
-#include "cose-log.h"
+/* use a non-default MAC driver */
+#define NETSTACK_CONF_MAC border_router_mac_driver
 
-void
-cose_print_buff(uint8_t *buff, size_t len)
-{
+#define SLIP_DEV_CONF_SEND_DELAY (CLOCK_SECOND / 32)
 
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
-void
-cose_print_char(uint8_t *buff, size_t len)
-{
+#define SERIALIZE_ATTRIBUTES 1
 
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
+#define CMD_CONF_OUTPUT border_router_cmd_output
+
+/* used by wpcap (see /cpu/native/net/wpcap-drv.c) */
+#define SELECT_CALLBACK 1

@@ -110,6 +110,8 @@ typedef struct edhoc_context_t {
   uint8_t msg_tx[MAX_PAYLOAD];
   uint16_t rx_sz;
   uint16_t tx_sz;
+  uint8_t sign[MAX_PAYLOAD];
+  uint8_t sign_sz;
 } edhoc_context_t;
 
 /**
@@ -185,7 +187,7 @@ void edhoc_gen_msg_1(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz,bool suit_a
  * - ctx->MSG2 = (data_2, CIPHERTEXT_2:bstr)
  * - where: data_2 = (?C_I:bstr_identifier, G_Y:bstr)
  */
-void edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz);
+size_t edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz);
 
 /**
  * \brief Generate the EDHOC Message 3 and set it on the EDHOC ctx
@@ -332,5 +334,7 @@ int16_t edhoc_kdf(uint8_t *result, uint8_t *key, bstr th, char *label, uint16_t 
  */
 uint8_t edhoc_get_authentication_key(edhoc_context_t *ctx);
 
+
+void edhoc_gen_ciphertext_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz, size_t data_sz);
 #endif /* _EDHOC_H_ */
 /** @} */

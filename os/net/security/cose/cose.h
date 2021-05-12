@@ -51,27 +51,28 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "cbor.h"
-
+//#include <os/lib/drivers/ecc-uecc.h>
+//#include "ecc-uecc.h"
 /* COSE Algorthim parameters */
 #define COSE_Algorithm_AES_CCM_16_64_128 10
 #define COSE_algorithm_AES_CCM_16_64_128_KEY_LEN 16
 #define COSE_algorithm_AES_CCM_16_64_128_IV_LEN  13
 #define COSE_algorithm_AES_CCM_16_64_128_TAG_LEN  8
 
-/*#define SIG "Signature"
+#define SIG "Signature"
  #define SIG1 "Signature1"
  #define CSIG "CounterSignature"
  #ifdef COSE_CONF_SIGN
  #define SIGN COSE_CONF_SIGN
  #else
  #define SIGN SIG1
- #endif*/
-
+ #endif
 /**
  * \brief context of the  different COSE data structures
  */
 /* #define ENC "Encrypt" */
 #define ENC0 "Encrypt0"
+
 /* #define ENC_REC "Enc_Recipient" */
 /* #define MAC_REC "Mac_Reciepient" */
 /* #define REC_REC "Rec_Recipient" */
@@ -128,6 +129,7 @@
  * \brief Maximum Algorithm Identify length
  */
 #define MAX_ALG_SZ 4
+#define MAX_KEY_SIGN 32
 
 /**
  * \brief Buffer struct
@@ -145,38 +147,6 @@ typedef struct sstr_cose {
   size_t len;
 } sstr_cose;
 
-/* IN CONSTRACTION */
-/*typedef struct cose_sign1 { //sig_structure RFC8152
-   uint8_t protected_header[COSE_MAX_BUFFER];
-   uint8_t protected_header_sz;
-   uint8_t unprotected_header[COSE_MAX_BUFFER];
-   uint8_t unprotected_header_sz;
-   uint8_t payload[COSE_MAX_BUFFER];
-   uint8_t payload_sz;
-   uint8_t signature[COSE_MAX_BUFFER];
-   uint8_t signature_sz;
-   uint8_t external_aad[COSE_MAX_BUFFER];
-   uint8_t external_aad_sz;
-   uint8_t alg[MAX_ALG_SZ];
-   uint8_t alg_sz;
-   uint8_t key[MAX_KEY_SIGN];
-   uint8_t key_sz;
-   } cose_sign1;
- */
-/*typedef struct cose_sign1 { ///sig_structure RFC8152
-    bstr_cose protected_header; // For EDHOC: ID_CRED_V
-    bstr_cose unprotected_header; // For EDHOC: Non include at the message may content paramters such as algorithm...
-    bstr_cose payload;  // For EDHOC: CRED_V
-    bstr_cose external_aad; // For EDHOC: TH2
-   } cose_sign1;*/
-
-/*typedef struct sig_structure {
-   sstr_cose str_id;
-   bstr_cose protected;
-   bstr_cose external_aad;
-   bstr_cose payload;
-   } sig_structure;
- */
 
 /**
  * \brief COSE_encrypt0 struct
@@ -224,6 +194,42 @@ typedef struct cose_key {
   bstr_cose cert_hash;
   char name[8];  /* Identity */
 } cose_key;
+
+
+/* IN CONSTRACTION */
+typedef struct cose_sign1 { //sig_structure RFC8152
+   uint8_t protected_header[COSE_MAX_BUFFER];
+   uint8_t protected_header_sz;
+   uint8_t unprotected_header[COSE_MAX_BUFFER];
+   uint8_t unprotected_header_sz;
+   uint8_t payload[COSE_MAX_BUFFER];
+   uint8_t payload_sz;
+   uint8_t external_aad[COSE_MAX_BUFFER];
+   uint8_t external_aad_sz;
+   uint8_t alg[MAX_ALG_SZ];
+   uint8_t alg_sz;
+   uint8_t secret[32];
+   uint8_t key_secret_sz;
+   uint8_t key[32];
+   uint8_t key_sz;
+   uint8_t sign[COSE_MAX_BUFFER];
+   uint8_t sign_sz;
+   } cose_sign1;
+
+/*typedef struct cose_sign1 { ///sig_structure RFC8152
+    bstr_cose protected_header; // For EDHOC: ID_CRED_V
+    bstr_cose unprotected_header; // For EDHOC: Non include at the message may content paramters such as algorithm...
+    bstr_cose payload;  // For EDHOC: CRED_V
+    bstr_cose external_aad; // For EDHOC: TH2
+   } cose_sign1;*/
+
+typedef struct sig_structure {
+   sstr_cose str_id;
+   bstr_cose protected;
+   bstr_cose external_aad;
+   bstr_cose payload;
+   } sig_structure;
+
 
 /**
  * \brief Create a new cose_encrypt0 context
@@ -340,6 +346,102 @@ uint8_t cose_decrypt(cose_encrypt0 *enc);
  *
  */
 void cose_print_key(cose_key *cose);
+
+
+/**
+ * \brief Create a new cose_encrypt0 context
+ * \return cose_encrypt0 new cose_encrypt0 context struct
+ *
+ * Used to create a news ose_encrypt0 and allocate at the memory reserved dynamically
+ */
+cose_sign1* cose_sign1_new();
+
+/**
+ * \brief Close the cose_encrypt0 context
+ * \param enc cose_encrypt0 context struct
+ *
+ * Used to de-allocate the memory reserved for the cose_encrypt0 context
+ */
+void cose_sign1_finalize(cose_sign1 *enc);
+
+/*IN CONSTRACTION*/
+/*cose_sign1 *sign1_new();
+   void sign1_finalize(cose_sign1 *sig);
+   uint8_t cose_sign1_set_key(cose_sign1 *sig, uint8_t alg, uint8_t *key, uint8_t key_sz);
+   uint8_t cose_sign1_set_content(cose_sign1 *sig, uint8_t *payload, uint16_t paylod_sz, uint8_t *add, uint8_t add_sz);
+   uint8_t cose_sign1_set_header(cose_sign1 *sig, uint8_t *prot, uint16_t prot_sz, uint8_t *unp, uint16_t unp_sz);
+   uint8_t cose_sign(cose_sign1 *sig, uint8_t sz);*/
+
+/**
+ * \brief Set the encryption key/nonce and the algorithm identifier on the cose_encrytp0 context
+ * \param enc output cose_sign1 context
+ * \param alg input algorithm identifier
+ * \param key input point to the encryption/decryption key
+ * \param key_sz input encryption/decryption key length
+ * \param nonce input point to the nonce (Initialization Vector (IV) value)
+ * \param nonce_sz input nonce length
+ * \return 1 if both key and nonce have the correct length and 0 otherwise
+ *
+ *  Used before encryption/decryption operation to select:
+ *  - the algorithm used for the security processing
+ *  - the encryption Key
+ *  - the nonce: It is the Initialization Vector (IV) value
+ *
+ */
+uint8_t cose_sign1_set_key(cose_sign1 *enc, uint8_t alg, uint8_t *key_secret, uint8_t key_secret_sz, uint8_t *key, uint8_t key_sz);
+
+/**
+ * \brief Set the plaintext and aad (additional authentication data) of the message
+ * \param enc output cose_sign1 context
+ * \param plain input The plaintext contained by the message
+ * \param plain_sz  input The plaintext length
+ * \param add input The Aditional Authentication Data
+ * \param add_sz input The Aditional Authentication Data length
+ * \return 1 and the plain_sz is smaller than the maximum buffer size
+ *
+ *  Used before encryption operation to select:
+ *  - The plaintext or ciphertext contained by the message to encrypt
+ *  - Additional Authentication Data (AAD) contained by the message
+ */
+uint8_t cose_sign1_set_content(cose_sign1 *enc, uint8_t *plain, uint16_t plain_sz, uint8_t *add, uint8_t add_sz);
+
+/**
+ * \brief Set the ciphertext of the encrypted message
+ * \param enc output cose_sign1 context
+ * \param ciphertext input The ciphertext contained by the cipher message
+ * \param ciphertext_sz  input The ciphertext length
+ * \return 1 and the ciphertext_sz is smaller than the maximum buffer size
+ *
+ *  Used before decryption operation to select:
+ *  - The plaintext or ciphertext contained by the message to decrypt
+ */
+uint8_t cose_sign1_set_payload(cose_sign1 *enc, uint8_t *payload, uint16_t payload_sz);
+
+/**
+ * \brief Set the protected/unprotected bucket header information of the message
+ * \param enc output cose_sign1 context
+ * \param prot input protected bucket
+ * \param prot_sz input protected bucket length
+ * \param unp input unprotected bucket
+ * \param unp_sz input unprotected bucket length
+ *
+ *  Used before encryption/decryption operation to select:
+ *  - The protected bucket contains parameters about the current layer that are to be cryptographically protected
+ *  - The unprotected bucket contains parameters about the current layer that are not cryptographically protected
+ */
+void cose_sign1_set_header(cose_sign1 *enc, uint8_t *prot, uint16_t prot_sz, uint8_t *unp, uint16_t unp_sz);
+
+/**
+ * \brief  encrypt the cose_sign1 struct using AEAD algorithm
+ * \param enc cose_sign1 context
+ * \return ciphertext_sz if the input parameter selected is appropriate and the cypher success and 0 otherwise
+ *
+ * This function implements the encryption algorithm AEAD on the data structure contained by the cose_sign1 struct.
+ * Before this function be called must be selected every necessary parameter of the enc (cose_sign1 context)
+ * The ciphertext is returned in the ciphertext element of the cose_sign1 struct tagged by CBOR tag 16 bytes.
+ *
+ */
+uint8_t cose_sign(cose_sign1 *enc, uint8_t *str_encode);
 
 #endif /* _COSE_H_ */
 /** @} */

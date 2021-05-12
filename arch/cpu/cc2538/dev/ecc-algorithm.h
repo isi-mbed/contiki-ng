@@ -169,6 +169,10 @@ typedef struct {
  */
 PT_THREAD(ecc_dsa_verify(ecc_dsa_verify_state_t *state));
 
+void eccbytesToNative(uint32_t *native,
+                 const uint8_t *bytes,
+                 int num_bytes);
+
 #endif /* ECC_ALGORITHM_H_ */
 
 /**

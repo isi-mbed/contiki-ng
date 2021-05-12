@@ -183,3 +183,23 @@ set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t cur
   generate_cose_key(key, cose, auth_key->identity, auth_key->identity_sz);
   LOG_DBG("Cose kid len (%d)\n", (int)cose->kid.len);
 }
+
+uint8_t 
+sign(ecc_key *key, uint8_t * in, uint8_t in_sz, uint8_t *sign, uint8_t sign_sz,ecc_curve_t curve){
+  
+  uint8_t hash[32];
+  uint8_t er = compute_TH(in,in_sz,hash,32);
+  LOG_DBG("er %d\n",er);
+  LOG_DBG("hash:");
+  print_buff_8_info(hash,32);
+  #if ECC == UECC_ECC    
+    uecc_generate_sign(key, hash, 32, sign, sign_sz, curve);
+  #endif
+  #if ECC == CC2538_ECC
+   // er = cc2538_generate_IKM(gx, gy, private_key, ikm, curve);
+  #endif
+  LOG_DBG("sign size (%d):",sign_sz);
+  print_buff_8_info(sign,sign_sz);
+  return er;
+
+}

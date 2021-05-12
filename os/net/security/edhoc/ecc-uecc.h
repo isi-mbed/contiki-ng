@@ -72,5 +72,6 @@ typedef struct ecc_curve_t {
 uint8_t uecc_generate_key(ecc_key *key, ecc_curve_t curve);
 void uecc_uncompress(uint8_t *compressed, uint8_t *gx, uint8_t *gy, ecc_curve_t *curve);
 uint8_t uecc_generate_IKM(uint8_t *gx, uint8_t *gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
+uint8_t uecc_generate_sign(ecc_key *key, uint8_t* in, uint8_t in_sz, uint8_t* sign, uint8_t sign_sz,ecc_curve_t curve);
 
 #endif

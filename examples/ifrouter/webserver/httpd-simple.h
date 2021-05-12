@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 2010, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,28 +30,45 @@
 
 /**
  * \file
- *         Cose, heade file for log configuration
+ *         A simple webserver
  * \author
- *         Lidia Pocero <pocero@isi.gr>
+ *         Adam Dunkels <adam@sics.se>
+ *         Niclas Finne <nfi@sics.se>
+ *         Joakim Eriksson <joakime@sics.se>
  */
 
-#include "cose-log.h"
+#ifndef HTTPD_SIMPLE_H_
+#define HTTPD_SIMPLE_H_
 
-void
-cose_print_buff(uint8_t *buff, size_t len)
-{
+#include "contiki-net.h"
 
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
-void
-cose_print_char(uint8_t *buff, size_t len)
-{
+/* The current internal border router webserver ignores the requested file name */
+/* and needs no per-connection output buffer, so save some RAM */
+#ifndef WEBSERVER_CONF_CFS_PATHLEN
+#define HTTPD_PATHLEN 2
+#else /* WEBSERVER_CONF_CFS_CONNS */
+#define HTTPD_PATHLEN WEBSERVER_CONF_CFS_PATHLEN
+#endif /* WEBSERVER_CONF_CFS_CONNS */
 
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
+struct httpd_state;
+typedef char (*httpd_simple_script_t)(struct httpd_state *s);
+
+struct httpd_state {
+  struct timer timer;
+  struct psock sin, sout;
+  struct pt outputpt;
+  char inputbuf[HTTPD_PATHLEN + 24];
+/*char outputbuf[UIP_TCP_MSS]; */
+  char filename[HTTPD_PATHLEN];
+  httpd_simple_script_t script;
+  char state;
+};
+
+void httpd_init(void);
+void httpd_appcall(void *state);
+
+httpd_simple_script_t httpd_simple_get_script(const char *name);
+
+#define SEND_STRING(s, str) PSOCK_SEND(s, (uint8_t *)str, strlen(str))
+
+#endif /* HTTPD_SIMPLE_H_ */

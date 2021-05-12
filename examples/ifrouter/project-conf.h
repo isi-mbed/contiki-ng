@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 2010, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,30 +28,47 @@
  *
  */
 
-/**
- * \file
- *         Cose, heade file for log configuration
- * \author
- *         Lidia Pocero <pocero@isi.gr>
- */
+#ifndef PROJECT_CONF_H_
+#define PROJECT_CONF_H_
 
-#include "cose-log.h"
+#ifndef WEBSERVER_CONF_CFS_CONNS
+#define WEBSERVER_CONF_CFS_CONNS 2
+#endif
 
-void
-cose_print_buff(uint8_t *buff, size_t len)
-{
+#ifndef BORDER_ROUTER_CONF_WEBSERVER
+#define BORDER_ROUTER_CONF_WEBSERVER 1
+#endif
 
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
-void
-cose_print_char(uint8_t *buff, size_t len)
-{
+#if BORDER_ROUTER_CONF_WEBSERVER
+#define UIP_CONF_TCP 1
+#endif
 
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
+//#define NETSTACK_CONF_WITH_IPV6	1
+#define UIP_CONF_ND6_SEND_RA 0
+#define UIP_CONF_ND6_SEND_NS 0
+#define UIP_CONF_ND6_SEND_NA 0
+#define UIP_CONF_ROUTER	1
+#define UIP_CONF_ND6_AUTOFILL_NBR_CACHE 0
+
+#define BUILD_WITH_RPL_BORDER_ROUTER               1
+#define UIP_FALLBACK_INTERFACE         rpl_interface
+
+#define LPM_CONF_MAX_PM       1
+
+#define UIP_CONF_BUFFER_SIZE           	1280
+
+#define QUEUEBUF_CONF_NUM					16
+
+//#define SICSLOWPAN_CONF_FRAGMENT_BUFFERS	16
+//#define SICSLOWPAN_CONF_REASS_CONTEXTS	 	4
+
+//#define ZOUL_CONF_USE_CC1200_RADIO	1
+
+#define LOG_CONF_LEVEL_IPV6 			LOG_LEVEL_DBG
+//#define LOG_CONF_LEVEL_6LOWPAN          LOG_LEVEL_DBG
+//#define LOG_CONF_LEVEL_MAC              LOG_LEVEL_DBG
+//#define LOG_CONF_LEVEL_FRAMER           LOG_LEVEL_DBG
+
+//#define UART0_CONF_BAUD_RATE			57600
+
+#endif /* PROJECT_CONF_H_ */

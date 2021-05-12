@@ -40,6 +40,36 @@
 #include <os/lib/ccm-star.h>
 #include <string.h>
 #include "cose-log.h"
+//#include <os/net/security/micro-ecc/uECC.h>
+//#include <os/net/security/micro-ecc/uECC_vli.h>
+//#include <os/net/security/sha/sha.h>
+
+//#include "ecdh.h"
+
+/*void
+eccnativeToBytes(uint8_t *bytes,
+                 int num_bytes,
+                 const uint32_t *native)
+{
+  int8_t i;
+  for(i = 0; i < num_bytes; ++i) {
+    unsigned b = num_bytes - 1 - i;
+    bytes[i] = native[b / 4] >> (8 * (b % 4));
+  }
+}
+void
+eccbytesToNative(uint32_t *native,
+                 const uint8_t *bytes,
+                 int num_bytes)
+{
+  int8_t i;
+  memset(native, 0, sizeof(uint32_t) * 8);
+  for(i = 0; i < num_bytes; ++i) {
+    unsigned b = num_bytes - 1 - i;
+    native[b / 4] |=
+      (uint32_t)bytes[i] << (8 * (b % 4));
+  }
+}*/
 
 MEMB(encrypt0_storage, cose_encrypt0, 1);
 
@@ -72,6 +102,7 @@ cose_encrypt0_finalize(cose_encrypt0 *enc)
   encrypt0_free(enc);
 }
 static char enc_rec[] = RECIPIENT;
+static char sign_rec[] = SIGN;
 
 void
 cose_print_key(cose_key *cose)
@@ -143,6 +174,7 @@ encode_enc_structure(enc_structure str, uint8_t *cbor)
   size += cbor_put_bytes(&cbor, str.external_aad.buf, str.external_aad.len);
   return size;
 }
+
 uint8_t
 cose_decrypt(cose_encrypt0 *enc)
 {
@@ -243,3 +275,158 @@ cose_encrypt(cose_encrypt0 *enc)
   cose_print_buff_8_dbg(&enc->ciphertext[enc->plaintext_sz], TAG_LEN);
   return enc->ciphertext_sz;
 }
+
+
+
+MEMB(sign1_storage, cose_sign1, 1);
+
+static inline cose_sign1 *
+sign1_storage_new()
+{
+  return (cose_sign1 *)memb_alloc(&sign1_storage);
+}
+static inline void
+sign1_free(cose_sign1 *enc)
+{
+  memb_free(&sign1_storage, enc);
+}
+static void
+sign1_storage_init(void)
+{
+  memb_init(&sign1_storage);
+}
+cose_sign1 *
+cose_sign1_new()
+{
+  sign1_storage_init();
+  cose_sign1 *enc;
+  enc = sign1_storage_new();
+  return enc;
+}
+void
+cose_sign1_finalize(cose_sign1 *enc)
+{
+  sign1_free(enc);
+}
+
+
+uint8_t
+cose_sign1_set_key(cose_sign1 *enc, uint8_t alg, uint8_t *key_secret, uint8_t key_secret_sz, uint8_t *key, uint8_t key_sz)
+{
+  LOG_INFO("sign\n");
+  /*if(key_sz != KEY_LEN) {
+    return 0;
+  }*/
+
+  enc->key_secret_sz = key_secret_sz;
+  enc->key_sz = key_sz;
+  memcpy(enc->key, key, key_sz);
+  memcpy(enc->secret, key_secret, key_secret_sz);
+  LOG_INFO("Key (%d):",key_secret_sz);
+  cose_print_buff_8_info(enc->secret,enc->key_secret_sz);
+  return 1;
+}
+uint8_t
+cose_sign1_set_content(cose_sign1 *enc, uint8_t *plain, uint16_t plain_sz, uint8_t *add, uint8_t add_sz)
+{
+  if(plain_sz > COSE_MAX_BUFFER) {
+    return 0;
+  }
+  memcpy(enc->external_aad, add, add_sz);
+  enc->external_aad_sz = add_sz;
+  return 1;
+}
+uint8_t
+cose_sign1_set_payload(cose_sign1 *enc, uint8_t *payload, uint16_t payload_sz)
+{
+  if(payload_sz > MAX_CIPHER) {
+    return 0;
+  }
+  memcpy(enc->payload, payload, payload_sz);
+  enc->payload_sz = payload_sz;
+  return 1;
+}
+void
+cose_sign1_set_header(cose_sign1 *enc, uint8_t *prot, uint16_t prot_sz, uint8_t *unp, uint16_t unp_sz)
+{
+  memcpy(enc->protected_header, prot, prot_sz);
+  memcpy(enc->unprotected_header, unp, unp_sz);
+  enc->protected_header_sz = prot_sz;
+  enc->unprotected_header_sz = unp_sz;
+}
+uint8_t
+encode_enc_sign_structure(sig_structure str, uint8_t *cbor)
+{
+  uint8_t size = cbor_put_array(&cbor, 4);
+  size += cbor_put_text(&cbor, str.str_id.buf, strlen(str.str_id.buf));
+  size += cbor_put_bytes(&cbor, str.protected.buf, str.protected.len);
+  size += cbor_put_bytes(&cbor, str.external_aad.buf, str.external_aad.len);
+  size += cbor_put_bytes(&cbor, str.payload.buf, str.payload.len);
+  return size;
+}
+
+uint8_t
+cose_sign(cose_sign1 *enc, uint8_t *str_encode)
+{
+  LOG_DBG("Encrypt:\n");
+  LOG_DBG("Key pub:");
+  cose_print_buff_8_dbg(enc->key, enc->key_sz);
+  LOG_DBG("Key secret(%d):",enc->key_secret_sz);
+  cose_print_buff_8_info(enc->secret,enc->key_secret_sz);
+  LOG_DBG("external aad (%d):", enc->external_aad_sz);
+  cose_print_buff_8_dbg(enc->external_aad, enc->external_aad_sz);
+  LOG_DBG("Plaintext:");
+  cose_print_buff_8_dbg(enc->payload, enc->payload_sz);
+  LOG_DBG("protected:");
+  cose_print_buff_8_dbg(enc->protected_header, enc->protected_header_sz);
+
+  sig_structure str = {
+    .str_id = (sstr_cose){ sign_rec, sizeof(sign_rec) }, 
+    .protected = (bstr_cose){ enc->protected_header, enc->protected_header_sz },
+    .external_aad = (bstr_cose){ enc->external_aad, enc->external_aad_sz }, 
+    .payload = (bstr_cose){ enc->payload, enc->payload_sz}, 
+  }; 
+
+  //uint8_t str_encode[2 * COSE_MAX_BUFFER];
+  uint8_t str_sz = encode_enc_sign_structure(str, str_encode);
+  LOG_INFO("(CBOR-encoded AAD) (%d bytes):", str_sz);
+  cose_print_buff_8_info(str_encode, 64);
+  LOG_DBG("Key:");
+  cose_print_buff_8_dbg(enc->secret, enc->key_secret_sz);
+  //sign(key,str_encode,str_sz,enc->sign,64,curve);
+  return str_sz;
+
+}
+/*
+uint8_t
+cose_sign(cose_sign1 *enc, ecc_key * key, ecc_curve_t curve)
+{
+  LOG_DBG("Encrypt:\n");
+  LOG_DBG("Key pub:");
+  cose_print_buff_8_dbg(enc->key, enc->key_sz);
+  LOG_DBG("Key secret(%d):",enc->key_secret_sz);
+  cose_print_buff_8_info(enc->secret,enc->key_secret_sz);
+  LOG_DBG("external aad (%d):", enc->external_aad_sz);
+  cose_print_buff_8_dbg(enc->external_aad, enc->external_aad_sz);
+  LOG_DBG("Plaintext:");
+  cose_print_buff_8_dbg(enc->payload, enc->payload_sz);
+  LOG_DBG("protected:");
+  cose_print_buff_8_dbg(enc->protected_header, enc->protected_header_sz);
+
+  sig_structure str = {
+    .str_id = (sstr_cose){ sign_rec, sizeof(sign_rec) }, 
+    .protected = (bstr_cose){ enc->protected_header, enc->protected_header_sz },
+    .external_aad = (bstr_cose){ enc->external_aad, enc->external_aad_sz }, 
+    .payload = (bstr_cose){ enc->payload, enc->payload_sz}, 
+  }; 
+
+  uint8_t str_encode[2 * COSE_MAX_BUFFER];
+  uint8_t str_sz = encode_enc_sign_structure(str, str_encode);
+  LOG_INFO("(CBOR-encoded AAD) (%d bytes):", str_sz);
+  cose_print_buff_8_info(str_encode, 64);
+  LOG_DBG("Key:");
+  cose_print_buff_8_dbg(enc->secret, enc->key_secret_sz);
+  sign(key,str_encode,str_sz,enc->sign,64,curve);
+  return 64;
+
+}*/

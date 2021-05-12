@@ -42,7 +42,6 @@
 
 #define MAC_2 2
 #define MAC_3 3
-
 /*static rtimer_clock_t time; */
 
 static uint8_t buf[MAX_BUFFER];
@@ -462,6 +461,42 @@ edhoc_kdf(uint8_t *result, uint8_t *key, bstr th, char *label, uint16_t label_sz
   }
   return lenght;
 }
+uint8_t
+set_sign(cose_sign1 *cose, edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz)
+{
+  /*CBOR The TH2 */
+  cose_sign1_set_content(cose, NULL, 0, NULL, 0);
+  uint8_t th_cbor[ECC_KEY_BYTE_LENGHT + 2];
+  uint8_t *th_ptr = th_cbor;
+  size_t th_cbor_sz = cbor_put_bytes(&th_ptr, ctx->session.th.buf, ctx->session.th.len);
+  /*COSE encrypt0 set external aad */
+  cose->external_aad_sz = th_cbor_sz + ctx->session.cred_x.len + ad_sz;
+  memcpy(cose->external_aad, th_cbor, th_cbor_sz);
+  memcpy((cose->external_aad + th_cbor_sz), ctx->session.cred_x.buf, ctx->session.cred_x.len);
+  memcpy((cose->external_aad + th_cbor_sz + ctx->session.cred_x.len), ad, ad_sz);
+  cose_sign1_set_payload(cose,mac,MAC_LEN);
+  LOG_DBG("private key (%d):",ECC_KEY_BYTE_LENGHT);
+  print_buff_8_dbg(ctx->authen_key.private_key, ECC_KEY_BYTE_LENGHT);
+  cose_sign1_set_key(cose,0,ctx->authen_key.private_key,ECC_KEY_BYTE_LENGHT,NULL,0);
+
+  /* COSE encrypt0 set header */
+  print_buff_8_dbg(ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len);
+  cose_sign1_set_header(cose, ctx->session.id_cred_x.buf, ctx->session.id_cred_x.len, NULL, 0);
+  LOG_DBG("header (%d):", (int)cose->protected_header_sz);
+  print_buff_8_dbg(cose->protected_header, cose->protected_header_sz);
+  cose->sign_sz = 64;
+  uint8_t str[256];
+  uint8_t str_sz = cose_sign(cose,str);
+  sign(&ctx->authen_key,str,str_sz,cose->sign,64,ctx->curve);
+  LOG_DBG("sign (%d):", (int)cose->sign_sz);
+  print_buff_8_dbg(cose->sign, cose->sign_sz);
+  memcpy(ctx->sign,cose->sign,cose->sign_sz);
+  ctx->sign_sz = cose->sign_sz;
+  LOG_DBG("sign (%d):", (int)ctx->sign_sz);
+  print_buff_8_dbg(ctx->sign, ctx->sign_sz);
+  return cose->sign_sz;
+}
+
 static uint8_t
 set_mac(cose_encrypt0 *cose, edhoc_context_t *ctx, uint8_t *ad, uint16_t ad_sz, uint8_t mac_num)
 {
@@ -746,7 +781,16 @@ gen_plaintext(uint8_t *buffer, edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   }
 
   uint8_t *ptr = buffer + size;
+  #if ((METHOD == METH0) || (METHOD == METH2))
+
+  size += cbor_put_bytes(&ptr, ctx->sign, ctx->sign_sz);  
+  #endif
+
+  #if ((METHOD == METH1) || (METHOD == METH3))
+
   size += cbor_put_bytes(&ptr, mac, MAC_LEN);
+  #endif
+
   if(ad_sz != 0) {
     size += cbor_put_bytes(&ptr, ad, ad_sz);
   }
@@ -884,7 +928,7 @@ edhoc_gen_msg_1(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz, bool suit_array
   print_buff_8_info(ctx->msg_tx, ctx->tx_sz);
   LOG_PRINT("MSG1 sz: %d \n", (int)ctx->tx_sz);
 }
-void
+size_t 
 edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
 {
   size_t data_sz = set_data_2(ctx);
@@ -924,7 +968,11 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   gen_prk_3e2m(ctx, &ctx->authen_key, 1);
 
 #if ((METHOD == METH0) || (METHOD == METH2))
-
+  cose_sign1 sig;
+  gen_mac_dh(ctx, ad, ad_sz, mac);
+  LOG_INFO("MAC_2 and sign later (%d b ytes):", MAC_LEN);
+  print_buff_8_info(mac, MAC_LEN);
+  set_sign( &sig, ctx, ad, ad_sz);
 #endif
 
 #if ((METHOD == METH1) || (METHOD == METH3))
@@ -932,20 +980,44 @@ edhoc_gen_msg_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   LOG_INFO("MAC_2 (%d b ytes):", MAC_LEN);
   print_buff_8_info(mac, MAC_LEN);
 #endif
+ return data_sz;
+ /* uint16_t p_sz = gen_plaintext(buf, ctx, ad, ad_sz);
+  LOG_INFO("P_2e (%d bytes):", (int)p_sz);
+  print_buff_8_info(buf, p_sz);
+  gen_k_2e(ctx, p_sz);
 
+  
+  gen_ciphertext_2(ctx, buf, p_sz);
+ 
+  LOG_INFO("CIPHERTEXT_2 (%d bytes):", (int)p_sz);
+  print_buff_8_info(buf, p_sz);
+  //set ciphertext on msg tx 
+  ctx->tx_sz = data_sz;
+  uint8_t *ptr = ctx->msg_tx + data_sz;
+  ctx->session.ciphertex_2.len = cbor_put_bytes(&ptr, buf, p_sz);
+  ctx->tx_sz += ctx->session.ciphertex_2.len;
+
+  uint8_t head = 1;
+  if(*(ctx->msg_tx + data_sz) == 0x58) {
+    head++;
+  }
+  ctx->session.ciphertex_2.len -= head;
+  ctx->session.ciphertex_2.buf = ctx->msg_tx + data_sz + head;
+
+  LOG_PRINT("MSG2 sz: %d \n", ctx->tx_sz);*/
+}
+void edhoc_gen_ciphertext_2(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz, size_t data_sz){
   uint16_t p_sz = gen_plaintext(buf, ctx, ad, ad_sz);
   LOG_INFO("P_2e (%d bytes):", (int)p_sz);
   print_buff_8_info(buf, p_sz);
   gen_k_2e(ctx, p_sz);
 
-  /* time = RTIMER_NOW(); */
+  
   gen_ciphertext_2(ctx, buf, p_sz);
-  /* time = RTIMER_NOW() - time; */
-  /* LOG_INFO("Gen ciphertext2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time); */
-
+ 
   LOG_INFO("CIPHERTEXT_2 (%d bytes):", (int)p_sz);
   print_buff_8_info(buf, p_sz);
-  /*set ciphertext on msg tx */
+  //set ciphertext on msg tx 
   ctx->tx_sz = data_sz;
   uint8_t *ptr = ctx->msg_tx + data_sz;
   ctx->session.ciphertex_2.len = cbor_put_bytes(&ptr, buf, p_sz);
@@ -1005,7 +1077,11 @@ edhoc_gen_msg_3(edhoc_context_t *ctx, uint8_t *ad, size_t ad_sz)
   /*LOG_INFO("gen prk_4x3m: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t) time * 1000 / RTIMER_SECOND),(uint32_t)time); */
 
 #if ((METHOD == METH0) || (METHOD == METH2))
-
+  cose_sign1 sig;
+  gen_mac_dh(ctx, ad, ad_sz, mac);
+  LOG_INFO("MAC_2 (%d b ytes):", MAC_LEN);
+  print_buff_8_info(mac, MAC_LEN);
+  set_sign( &sig, ctx, ad, ad_sz);
 #endif
 
   /*Generate Authentication MAC */
@@ -1443,7 +1519,10 @@ edhoc_authenticate_msg(edhoc_context_t *ctx, uint8_t **ptr, uint8_t cipher_len, 
   ctx->session.id_cred_x.buf = id_cred_x;
 
 #if ((METHOD == METH0) || (METHOD == METH2))
-
+ if(check_mac_dh(ctx, ad, rest_sz, sign_r, sign_r_sz) == 0) {
+    LOG_ERR("error code in handeler (%d)\n ", ERR_AUTHENTICATION);
+    return ERR_AUTHENTICATION;
+  }
 #endif
 #if ((METHOD == METH1) || (METHOD == METH3))
   if(check_mac_dh(ctx, ad, rest_sz, sign_r, sign_r_sz) == 0) {

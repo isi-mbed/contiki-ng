@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 2011, Swedish Institute of Computer Science.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,33 +25,35 @@
  * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
- *
  */
 
 /**
  * \file
- *         Cose, heade file for log configuration
+ *         Border router header file
  * \author
- *         Lidia Pocero <pocero@isi.gr>
+ *         Joakim Eriksson <joakime@sics.se>
  */
 
-#include "cose-log.h"
+#ifndef BORDER_ROUTER_H_
+#define BORDER_ROUTER_H_
 
-void
-cose_print_buff(uint8_t *buff, size_t len)
-{
+#include "contiki.h"
+#include "net/ipv6/uip.h"
+#include <stdio.h>
 
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
-void
-cose_print_char(uint8_t *buff, size_t len)
-{
+int border_router_cmd_handler(const uint8_t *data, int len);
+int slip_config_handle_arguments(int argc, char **argv);
+void write_to_slip(const uint8_t *buf, int len);
 
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
+void border_router_set_prefix_64(const uip_ipaddr_t *prefix_64);
+void border_router_set_mac(const uint8_t *data);
+void border_router_set_sensors(const char *data, int len);
+void border_router_print_stat(void);
+
+void tun_init(void);
+
+int slip_init(void);
+int slip_set_fd(int maxfd, fd_set *rset, fd_set *wset);
+void slip_handle_fd(fd_set *rset, fd_set *wset);
+
+#endif /* BORDER_ROUTER_H_ */

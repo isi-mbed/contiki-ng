@@ -38,6 +38,8 @@
 #include "edhoc-server-API.h"
 #include "sys/pt.h"
 #include "sys/rtimer.h"
+#include "dev/ecc-algorithm.h"
+#include "dev/ecc-curve.h"
 
 /* EDHOC Client protocol states */
 #define NON_MSG 0
@@ -222,7 +224,24 @@ PROCESS_THREAD(edhoc_server, ev, data){
         /*Generate MSG2 */
         time = RTIMER_NOW();
         LOG_INFO("---------------------------------generate message_2-----------------------------\n");
-        edhoc_gen_msg_2(ctx, (uint8_t *)new_ecc.ad.ad_2, new_ecc.ad.ad_2_sz);
+        size_t data_sz = edhoc_gen_msg_2(ctx, (uint8_t *)new_ecc.ad.ad_2, new_ecc.ad.ad_2_sz);
+       /* uint8_t sign[100];
+        
+        //#if ECC == CC2538_ECC
+        LOG_INFO("generate key with CC2538 hw modules\n");
+         static ecc_dsa_sign_state_t state = {
+          .process = &edhoc_example_server,
+          .curve_info = &nist_p_256,
+        };
+        eccbytesToNative(state.k_e,ctx->authen_key.private_key, ECC_KEY_BYTE_LENGHT);
+        eccbytesToNative(state.k_e,ctx->authen_key.public.x, ECC_KEY_BYTE_LENGHT);
+        
+        //#endif
+        PT_SPAWN(&edhoc_example_server.pt, &key.pt, generate_key_hw(&key));*/
+
+  
+        edhoc_gen_ciphertext_2(ctx, (uint8_t *)new_ecc.ad.ad_2, new_ecc.ad.ad_2_sz, data_sz);
+
         time = RTIMER_NOW() - time;
         LOG_PRINT("Server time to gen MSG2: %" PRIu32 " ms (%" PRIu32 " CPU cycles ).\n", (uint32_t)((uint64_t)time * 1000 / RTIMER_SECOND), (uint32_t)time);
         LOG_INFO("message_2 (CBOR Sequence) (%d bytes):", ctx->tx_sz);

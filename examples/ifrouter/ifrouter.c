@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 201, RISE SICS
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,32 +26,32 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * This file is part of the Contiki operating system.
+ *
  */
 
-/**
- * \file
- *         Cose, heade file for log configuration
- * \author
- *         Lidia Pocero <pocero@isi.gr>
- */
+#include "contiki.h"
 
-#include "cose-log.h"
+/* Log configuration */
+#include "sys/log.h"
+#define LOG_MODULE "RPL BR"
+#define LOG_LEVEL LOG_LEVEL_INFO
 
-void
-cose_print_buff(uint8_t *buff, size_t len)
+/* Declare and auto-start this file's process */
+PROCESS(contiki_ng_if, "Contiki-NG Interface Router");
+AUTOSTART_PROCESSES(&contiki_ng_if);
+
+/*---------------------------------------------------------------------------*/
+PROCESS_THREAD(contiki_ng_if, ev, data)
 {
+  PROCESS_BEGIN();
 
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
-  }
-  LOG_OUTPUT("\n");
-}
-void
-cose_print_char(uint8_t *buff, size_t len)
-{
+#if BORDER_ROUTER_CONF_WEBSERVER
+  PROCESS_NAME(webserver_nogui_process);
+  process_start(&webserver_nogui_process, NULL);
+#endif /* BORDER_ROUTER_CONF_WEBSERVER */
 
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
+  LOG_INFO("Contiki-NG Interface Router started\n");
+
+  PROCESS_END();
 }

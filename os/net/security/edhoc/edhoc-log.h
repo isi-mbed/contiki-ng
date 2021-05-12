@@ -42,7 +42,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "sys/log.h"
+//#ifndef LOG_MODULE
 #define LOG_MODULE "EDHOC"
+//#endif
 #ifndef LOG_LEVEL_EDHOC
 #define LOG_LEVEL_EDHOC LOG_LEVEL_NONE
 #endif

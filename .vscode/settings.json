@@ -1,0 +1,16 @@
+{
+    "files.associations": {
+        "uip-ds6-route.h": "c",
+        "random": "c",
+        "contiki-lib.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c",
+        "ecc-algorithm.h": "c",
+        "*.inc": "c",
+        "ecdh.h": "c",
+        "edhoc-key-storage.h": "c",
+        "stdio.h": "c"
+    }
+}

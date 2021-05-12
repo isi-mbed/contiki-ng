@@ -40,6 +40,8 @@
 #define PLATFORM_REBOOT watchdog_reboot
 #endif
 
+
+#define LWM2M_SERVER_ADDRESS "coap://[64:ff9b::527:53ce]"
 #if BOARD_SENSORTAG
 /* Real sensor is present... */
 #else

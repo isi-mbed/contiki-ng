@@ -88,6 +88,9 @@
 #include "board-peripherals.h"
 #include "rf-core/rf-ble.h"
 
+#include "sys/rtimer.h"
+#include "rpl.h"
+
 #include "ti-lib.h"
 
 #include <stdio.h>
@@ -350,10 +353,23 @@ init_sensor_readings(void)
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(cc26xx_demo_process, ev, data)
 {
-
+  static struct etimer timer;
   PROCESS_BEGIN();
 
   printf("CC26XX demo\n");
+
+  etimer_set(&timer, CLOCK_SECOND * 10);
+  while(1) {
+    watchdog_periodic();
+    printf("Waiting to reach the rpl\n");
+    if(rpl_is_reachable()) {
+      printf("RPL reached\n");
+      watchdog_periodic();
+      break;
+    }
+    PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&timer));
+    etimer_reset(&timer);
+  }
 
   init_sensors();
 

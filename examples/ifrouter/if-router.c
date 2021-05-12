@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Industrial Systems Institute (ISI), Patras, Greece
+ * Copyright (c) 2017, RISE SICS
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,32 +26,52 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  *
+ * This file is part of the Contiki operating system.
+ *
  */
 
-/**
- * \file
- *         Cose, heade file for log configuration
- * \author
- *         Lidia Pocero <pocero@isi.gr>
- */
+#include "contiki.h"
+#include "net/routing/routing.h"
+#include "if-router.h"
 
-#include "cose-log.h"
+/* Log configuration */
+#include "sys/log.h"
+#define LOG_MODULE "BR"
+#define LOG_LEVEL LOG_LEVEL_INFO
 
+uint8_t prefix_set;
+
+/*---------------------------------------------------------------------------*/
 void
-cose_print_buff(uint8_t *buff, size_t len)
+print_local_addresses(void)
 {
+  int i;
+  uint8_t state;
 
-  for(int i = len; i > 0; i--) {
-    LOG_OUTPUT("%02x", buff[i]);
+  LOG_INFO("Server IPv6 addresses:\n");
+  for(i = 0; i < UIP_DS6_ADDR_NB; i++) {
+    state = uip_ds6_if.addr_list[i].state;
+    if(uip_ds6_if.addr_list[i].isused &&
+       (state == ADDR_TENTATIVE || state == ADDR_PREFERRED)) {
+      LOG_INFO("  ");
+      LOG_INFO_6ADDR(&uip_ds6_if.addr_list[i].ipaddr);
+      LOG_INFO_("\n");
+    }
   }
-  LOG_OUTPUT("\n");
 }
+/*---------------------------------------------------------------------------*/
 void
-cose_print_char(uint8_t *buff, size_t len)
+set_prefix_64(uip_ipaddr_t *prefix_64)
 {
-
-  for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%c", buff[i]);
-  }
-  LOG_OUTPUT("\n");
+  prefix_set = 1;
+  NETSTACK_ROUTING.root_set_prefix(prefix_64, NULL);
+ // NETSTACK_ROUTING.root_start();
 }
+/*---------------------------------------------------------------------------*/
+void
+rpl_border_router_init(void)
+{
+  PROCESS_NAME(border_router_process);
+  process_start(&border_router_process, NULL);
+}
+/*---------------------------------------------------------------------------*/

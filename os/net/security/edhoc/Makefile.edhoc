@@ -1,5 +1,6 @@
 
 MODULES += os/lib/cbor
+MODULES += os/lib/drivers
 MODULES += os/net/security/cose
 MODULES += os/net/security/sha
 MODULES += os/net/app-layer/coap

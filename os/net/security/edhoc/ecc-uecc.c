@@ -114,3 +114,15 @@ uecc_generate_IKM(uint8_t *gx, uint8_t *gy, uint8_t *private_key, uint8_t *ikm, 
   watchdog_periodic();
   return er;
 }
+
+uint8_t 
+uecc_generate_sign(ecc_key *key, uint8_t* in, uint8_t in_sz, uint8_t* sign, uint8_t sign_sz,ecc_curve_t curve){
+ 
+  watchdog_periodic();
+  uECC_set_rng(&RNG);
+  uint8_t er = uECC_sign(key->private_key, in, in_sz,sign, curve.curve);
+  LOG_DBG("sign (%d):",er);
+  print_buff_8_info(sign,sign_sz);
+  return er;
+
+}
