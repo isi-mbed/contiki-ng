@@ -61,12 +61,12 @@
 /**
  * \brief OSCORE context struct
  */
-typedef struct oscore_ctx_t {
+typedef struct edhoc_oscore_ctx_t {
   uint8_t master_secret[OSCORE_KEY_SZ];
   uint8_t master_salt[OSCORE_SALT_SZ];
   int client_ID;   /* coap client is the Initiator */
   int server_ID;   /* coap server is the Responder */
-}oscore_ctx_t;
+}edhoc_oscore_ctx_t;
 
 /**
  * \brief PSK context struct
@@ -86,7 +86,7 @@ typedef struct psk_ctx_t {
  *  This can be run from both EDHOC Initiator and Responder once the EDHOC protocol has finished
  *  successfully.
  */
-int8_t edhoc_exporter_oscore(oscore_ctx_t *osc, edhoc_context_t *ctx);
+int8_t edhoc_exporter_oscore(edhoc_oscore_ctx_t *osc, edhoc_context_t *ctx);
 
 /**
  * \brief Derive a new PSK Chaining
@@ -105,6 +105,6 @@ int8_t edhoc_exporter_psk_chaining(psk_ctx_t *psk, edhoc_context_t *ctx);
  * \param osc input OSCORE Context struct
  *
  */
-void edhoc_exporter_print_oscore_ctx(oscore_ctx_t *osc);
+void edhoc_exporter_print_oscore_ctx(edhoc_oscore_ctx_t *osc);
 #endif /* _EDHOC_EXPORTER_H_ */
 /** @} */

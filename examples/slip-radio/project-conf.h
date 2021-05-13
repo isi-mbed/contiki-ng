@@ -29,7 +29,9 @@
 
 #ifndef PROJECT_CONF_H_
 #define PROJECT_CONF_H_
+//#define IEEE802154_CONF_PANID 0xaaaa
 
+//#define IEEE802154_CONF_PANID 0x0a0b
 /*---------------------------------------------------------------------------*/
 #define UIP_CONF_ROUTER                 0
 

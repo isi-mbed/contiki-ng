@@ -42,7 +42,7 @@ print_buff(uint8_t *buff, size_t len)
 {
 
   for(int i = 0; i < len; i++) {
-    LOG_OUTPUT("%02x ", buff[i]);
+    LOG_OUTPUT("%02x", buff[i]);
   }
   LOG_OUTPUT("\n");
 }

@@ -61,6 +61,7 @@
 /* EDHOC process states */
 #define SERV_FINISHED 1
 #define SERV_RESTART 2
+#define SERV_NEW_MSG 3
 
 /**
  * \brief EDHOC context struct used in the EDHOC protocol
@@ -171,7 +172,7 @@ void edhoc_server_close();
  *  part. The EDHOC messages 1 and message 3 are transferred in POST requests and the EDHOC message 2
  *  is transferred in 2.04 (Changed) responses.
  */
-void edhoc_server_process(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, uint8_t len);
+void edhoc_server_process(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, size_t len);
 
 /**
  * \brief Set the Application Data to be carried on EDHOC message 2
@@ -199,5 +200,11 @@ uint8_t edhoc_server_get_ad_1(char *buff);
  * This function copy on the buff the Application data from the EDHOC message 3 received
  */
 uint8_t edhoc_server_get_ad_3(char *buff);
+
+
+void
+edhoc_server_kill();
+void
+edhoc_post_new_msg(coap_message_t *req, coap_message_t *res, edhoc_server_t *ser, uint8_t *msg, size_t len);
 #endif /* _EDHOC_SERVER_API_H_ */
 /** @} */

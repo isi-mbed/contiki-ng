@@ -97,8 +97,46 @@ cbor_put_array(uint8_t **buffer, uint8_t elements)
   return 1;
 }
 
-
 int
+cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, size_t bytes_len)
+{
+  size_t ret = 0;
+  if((256 > bytes_len) && (bytes_len > 23)) {
+   // printf("<256\n");
+    **buffer = 0x58;
+    (*buffer)++;
+    **buffer =  (uint8_t) bytes_len;
+    (*buffer)++;
+    ret += 2;
+  }
+  else if((65535 > bytes_len) && (bytes_len > 255)) {
+   // printf(">256 (%d)\n", bytes_len);
+    **buffer = 0x59;
+    (*buffer)++;
+    uint16_t len = bytes_len;
+    **buffer = len>>8;
+   // printf("%u\n",**buffer);
+    (*buffer)++;
+    len = bytes_len;
+    **buffer = len;
+   // printf("%u\n",**buffer);
+    (*buffer)++;
+    ret += 3;
+  }
+  else {
+
+    **buffer = (0x40 | bytes_len);
+    (*buffer)++;
+    ret += 1;
+  }
+  memcpy(*buffer, bytes, bytes_len);
+  (*buffer) += bytes_len;
+  ret += bytes_len;
+  return ret;
+}
+
+
+/*int
 cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, uint8_t bytes_len)
 {
   uint8_t ret = 0;
@@ -118,7 +156,7 @@ cbor_put_bytes(uint8_t **buffer, uint8_t *bytes, uint8_t bytes_len)
   (*buffer) += bytes_len;
   ret += bytes_len;
   return ret;
-}
+}*/
 int 
 cbor_put_num(uint8_t **buffer, uint8_t value)
 {
@@ -140,7 +178,7 @@ cbor_put_map(uint8_t **buffer, uint8_t elements)
 
   return 1;
 }
-int
+/*int
 cbor_put_unsigned(uint8_t **buffer, uint8_t value)
 {
   if(value > 0x17) {
@@ -149,6 +187,35 @@ cbor_put_unsigned(uint8_t **buffer, uint8_t value)
     (**buffer) = (value);
     (*buffer)++;
     return 2;
+  }
+  (**buffer) = (value);
+  (*buffer)++;
+  return 1;
+}*/
+
+int
+cbor_put_unsigned(uint8_t **buffer, size_t value)
+{
+  size_t val = value;
+  if((value < 256) &&  (value > 0x17)) {
+    (**buffer) = (0x18);
+    (*buffer)++;
+    (**buffer) = (value);
+    (*buffer)++;
+    return 2;
+  }
+  else if((value < 65535) && (value > 255)){
+    (**buffer) = (0x19);
+    (*buffer)++;
+    (**buffer) = (val>>8);
+    val = value;
+    printf("%u\n",**buffer);
+    (*buffer)++;
+    (**buffer) = val; 
+    printf("%u\n",**buffer);
+    (*buffer)++;
+    return 3;
+      
   }
   (**buffer) = (value);
   (*buffer)++;

@@ -86,37 +86,37 @@ void print_char(char *buff, size_t len);
 #define LOG_DBG_EDHOC_STR(data, len)  LOG_EDHOC_STR(LOG_LEVEL_DBG, data, len)
 
 static inline void
-print_buff_8_dbg(uint8_t *buf, uint16_t len)
+print_buff_8_dbg(uint8_t *buf, size_t len)
 {
   LOG_DBG_EDHOC_BUFF(buf, len);
 }
 static inline void
-print_buff_8_print(uint8_t *buf, uint16_t len)
+print_buff_8_print(uint8_t *buf, size_t len)
 {
   LOG_PRINT_EDHOC_BUFF(buf, len);
 }
 static inline void
-print_buff_8_info(uint8_t *buf, uint16_t len)
+print_buff_8_info(uint8_t *buf, size_t len)
 {
   LOG_INFO_EDHOC_BUFF(buf, len);
 }
 static inline void
-print_buff_8_err(uint8_t *buf, uint16_t len)
+print_buff_8_err(uint8_t *buf, size_t len)
 {
   LOG_ERR_EDHOC_BUFF(buf, len);
 }
 static inline void
-print_char_8_dbg(char *buf, uint16_t len)
+print_char_8_dbg(char *buf, size_t len)
 {
   LOG_DBG_EDHOC_STR(buf, len);
 }
 static inline void
-print_char_8_info(char *buf, uint16_t len)
+print_char_8_info(char *buf, size_t len)
 {
   LOG_INFO_EDHOC_STR(buf, len);
 }
 static inline void
-print_char_8_err(char *buf, uint16_t len)
+print_char_8_err(char *buf, size_t len)
 {
   LOG_ERR_EDHOC_STR(buf, len);
 }

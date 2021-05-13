@@ -52,6 +52,11 @@
 #define ECC_KEY_BYTE_LENGHT 32
 #endif
 
+#define HEADER_KID 4
+#define HEADER_X5T 34
+#define HEADER_X5CHAIN 33
+
+
 /* COSE KEY struct */
 typedef struct cose_key_t {
   struct  key *next;
@@ -64,6 +69,9 @@ typedef struct cose_key_t {
   uint8_t x[ECC_KEY_BYTE_LENGHT];
   uint8_t y[ECC_KEY_BYTE_LENGHT];
   uint8_t private[ECC_KEY_BYTE_LENGHT];
+  uint8_t cert[670];
+  size_t cert_sz;
+  uint8_t cert_hash[8];
 }cose_key_t;
 
 /**
@@ -79,7 +87,7 @@ void edhoc_create_key_list();
  *
  * Add new keys to the repository in a form of cose_key_t struct
  */
-void edhoc_add_key(cose_key_t *key);
+void edhoc_add_key(const cose_key_t *key);
 
 /**
  * \brief Check in the keys repository for the key with the specific kid
@@ -115,6 +123,10 @@ uint8_t edhoc_check_key_list_identity(char *identity, uint8_t identity_sz, cose_
  *  that is associated with the kid if exist.
  */
 uint8_t edhoc_remove_key_kid(uint8_t *kid, uint8_t kid_sz);
+
+uint8_t edhoc_check_key_list_cert_hash(uint8_t *hash, uint8_t hash_sz, cose_key_t **auth_key);
+
+uint8_t edhoc_check_key_list_cert(uint8_t *cert, size_t cert_sz, cose_key_t **auth_key);
 
 /**
  * \brief Remove from the keys repository the key with the specific identity

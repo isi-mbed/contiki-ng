@@ -42,7 +42,7 @@
 #include "lib/random.h"
 #include <string.h>
 #include <stdio.h>
-#include "cose.h"
+#include "edhoc-cose.h"
 #include "edhoc-key-storage.h"
 #include "hmac-sha.h"
 
@@ -69,20 +69,20 @@
 #ifdef EDHOC_CONF_MAX_PAYLOAD
 #define MAX_PAYLOAD EDHOC_CONF_MAX_PAYLOAD
 #else
-#define MAX_PAYLOAD 256
+#define MAX_PAYLOAD 1256
 #endif
 #define MAX_KEY MAX_PAYLOAD
 
-#if ECC == UECC_ECC
+#if uECC == 0
 #include "ecc-uecc.h"
 #endif
 
-#if ECC == CC2538_ECC
+#if uECC == 1
 #include "ecc-cc2538.h"
 #endif
 
 typedef struct session_key {
-  uint8_t k2_e[MAX_KEY];
+  //uint8_t k2_e[MAX_KEY];
   uint8_t prk_2e[ECC_KEY_BYTE_LENGHT];
   uint8_t prk_3e2m[ECC_KEY_BYTE_LENGHT];
   uint8_t prk_4x3m[ECC_KEY_BYTE_LENGHT];
@@ -92,7 +92,7 @@ typedef struct session_key {
 } session_key;
 
 uint8_t generate_IKM(uint8_t *gx, uint8_t *gy, uint8_t *private_key, uint8_t *ikm, ecc_curve_t curve);
-uint8_t compute_TH(uint8_t * in, uint8_t in_sz, uint8_t *hash, uint8_t hash_sz);
+uint8_t compute_TH(uint8_t * in, uint16_t in_sz, uint8_t *hash, uint8_t hash_sz);
 uint8_t hkdf_extrac(uint8_t *salt, uint8_t salt_sz, uint8_t *ikm, uint8_t ikm_sz, uint8_t *hmac);
 int8_t hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint8_t *okm, uint16_t okm_sz);
 void generate_cose_key(ecc_key *key, cose_key *cose, char *identity, uint8_t id_sz);

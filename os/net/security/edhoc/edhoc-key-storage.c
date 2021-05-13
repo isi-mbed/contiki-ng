@@ -69,6 +69,41 @@ edhoc_check_key_list_identity(char *identity, uint8_t identity_sz, cose_key_t **
   return 0;
 }
 uint8_t
+edhoc_check_key_list_cert_hash(uint8_t *hash, uint8_t hash_sz, cose_key_t **auth_key)
+{
+  int n = list_length(key_list);
+  cose_key_t *key = list_head(key_list);
+  while(n > 0) {
+    if(hash_sz == 8) {
+      if(memcmp(key->cert_hash, hash, (size_t)hash_sz) == 0) {
+        *auth_key = key;
+        return 1;
+      }
+    }
+    n--;
+    key = list_item_next(key);
+  }
+  return 0;
+}
+
+uint8_t
+edhoc_check_key_list_cert(uint8_t *cert, size_t cert_sz, cose_key_t **auth_key)
+{
+  int n = list_length(key_list);
+  cose_key_t *key = list_head(key_list);
+  while(n > 0) {
+    if(cert_sz == key->cert_sz){
+      if(memcmp(key->cert, cert, 100) == 0) {
+        *auth_key = key;
+        return 1;
+      }
+    }
+    n--;
+    key = list_item_next(key);
+  }
+  return 0;
+}
+uint8_t
 edhoc_check_key_list_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **auth_key)
 {
   int n = list_length(key_list);
@@ -86,7 +121,7 @@ edhoc_check_key_list_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **auth_key)
   return 0;
 }
 void
-edhoc_add_key(cose_key_t *key)
+edhoc_add_key(const cose_key_t *key)
 {
   cose_key_t *k = memb_alloc(&key_memb);
   list_add(key_list, k);
@@ -121,5 +156,4 @@ void
 edhoc_remove_key(cose_key_t *auth_key)
 {
   list_remove(key_list, auth_key);
-  LOG_DBG("list lengh:(%d)", list_length(key_list));
 }

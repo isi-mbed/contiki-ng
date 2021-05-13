@@ -47,11 +47,11 @@
 /*static rtimer_clock_t time; */
 
 #ifndef HKDF_INFO_MAXLEN
-#define HKDF_INFO_MAXLEN 255
+#define HKDF_INFO_MAXLEN 750
 #endif
 
 #ifndef HKDF_OUTPUT_MAXLEN
-#define HKDF_OUTPUT_MAXLEN 255
+#define HKDF_OUTPUT_MAXLEN 750
 #endif
 
 static uint8_t aggregate_buffer[HAS_LENGHT + HKDF_INFO_MAXLEN + 1];
@@ -92,9 +92,11 @@ hmac_sha256_free(hmac_context_t *ctx)
   hmac_free(ctx);
 }
 uint8_t
-compute_TH(uint8_t *in, uint8_t in_sz, uint8_t *hash, uint8_t hash_sz)
+compute_TH(uint8_t *in, uint16_t in_sz, uint8_t *hash, uint8_t hash_sz)
 {
   int er = sha256(in, in_sz, hash);
+  LOG_INFO("TH (%d):", hash_sz);
+  print_buff_8_info(hash, hash_sz);
   return er;
 }
 uint8_t
@@ -133,12 +135,9 @@ hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint
   /*Compose T(2) ... T(N) */
   memcpy(aggregate_buffer, &(out_buffer[0]), 32);
   for(int i = 1; i < N; i++) {
-    /*LOG_INFO("sha-256 (%d)\n",i); */
     hmac_sha256_reset(&ctx, prk, prk_sz);
-
     memcpy(&(aggregate_buffer[32]), info, info_sz);
     aggregate_buffer[32 + info_sz] = i + 1;
-
     hmac_sha256_create(&ctx, prk, prk_sz, aggregate_buffer, 32 + info_sz + 1, &(out_buffer[i * 32]));
     memcpy(aggregate_buffer, &(out_buffer[i * 32]), 32);
   }
@@ -150,18 +149,23 @@ hkdf_expand(uint8_t *prk, uint16_t prk_sz, uint8_t *info, uint16_t info_sz, uint
 void
 generate_cose_key(ecc_key *key, cose_key *cose, char *identity, uint8_t id_sz)
 {
+  if ((AUTHENT_TYPE ==  PRK_ID) || (AUTHENT_TYPE == PRKI_2)) cose->header = HEADER_KID;
+  if (AUTHENT_TYPE ==  X5T) cose->header = HEADER_X5T;
+  if (AUTHENT_TYPE ==  X5CHAIN) cose->header = HEADER_X5CHAIN;
   cose->kid = (bstr_cose){ key->kid, key->kid_sz };
   cose->identity = (sstr_cose){ identity, id_sz };
   cose->crv = KEY_CRV; /* P-256 */
   cose->kty = KEY_TYPE; /* EC2 */
   cose->x = (bstr_cose){ key->public.x, ECC_KEY_BYTE_LENGHT };
   cose->y = (bstr_cose){ key->public.y, ECC_KEY_BYTE_LENGHT };
+  cose->cert_hash = (bstr_cose) {key->cert_hash.buf,key->cert_hash.len};
+  cose->cert = (bstr_cose) {key->cert.buf,key->cert.len};
+
 }
 void
 set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t curve)
 {
   if(auth_key->kid_sz == 0) {
-    LOG_DBG("kid_sz is 0 \n");
     key->kid_sz = 0;
     memcpy(key->public.x, auth_key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(key->public.y, auth_key->y, ECC_KEY_BYTE_LENGHT);
@@ -170,7 +174,10 @@ set_cose_key(ecc_key *key, cose_key *cose, cose_key_t *auth_key, ecc_curve_t cur
     memcpy(key->kid, auth_key->kid, auth_key->kid_sz);
     memcpy(key->public.x, auth_key->x, ECC_KEY_BYTE_LENGHT);
     memcpy(key->public.y, auth_key->y, ECC_KEY_BYTE_LENGHT);
+    key->cert_hash.buf = auth_key->cert_hash;
+    key->cert_hash.len = 8;
+    key->cert.buf = auth_key->cert;
+    key->cert.len = auth_key->cert_sz;
   }
   generate_cose_key(key, cose, auth_key->identity, auth_key->identity_sz);
-  LOG_DBG("Cose kid len (%d)\n", (int)cose->kid.len);
 }

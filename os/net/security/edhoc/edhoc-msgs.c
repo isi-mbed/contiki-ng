@@ -81,6 +81,25 @@ get_byte(uint8_t **in)
   (*in)++;
   return out;
 }
+/*int16_t
+edhoc_get_unsigned(uint8_t **in)
+{
+  uint8_t byte = get_byte(in);
+
+  if(byte < 0x18) {
+
+    return byte;
+  } else if(byte == 0x18) {
+    return get_byte(in);
+  } else if(byte == 0x18) {
+    retu
+  } 
+  else {
+    LOG_ERR("get not unsigned\n ");
+     (*in)--;
+    return -1;
+  }
+}*/
 int16_t
 edhoc_get_unsigned(uint8_t **in)
 {
@@ -123,6 +142,19 @@ point_byte(uint8_t **in)
   (*in)++;
   return out;
 }
+
+int edhoc_get_nil(uint8_t **buffer){
+  uint8_t byte = get_byte(buffer);
+	if (byte == 0xF6){
+    return 0;
+  }
+  else{
+    (*buffer)--;
+    return 1;
+  }
+   	
+	
+}
 size_t
 edhoc_get_bytes(uint8_t **in, uint8_t **out)
 {
@@ -132,14 +164,24 @@ edhoc_get_bytes(uint8_t **in, uint8_t **out)
     size = get_byte(in);
     *out = *in;
     *in = (*in + size);
+    //LOG_INFO("size: %d\n",size);
     return size;
-  } else if((0x40 <= byte) && (byte < 0x58)) {
+  }
+  else if(byte == 0x59){
+    size = get_byte(in);
+    size = (size<<8) + get_byte(in);
+    *out = *in;
+    *in = (*in + size);
+    //LOG_INFO("size: %d\n",size);
+    return size;
+    
+  } 
+  else if((0x40 <= byte) && (byte < 0x58)) {
     size = byte ^ 0x40;
     *out = *in;
     *in = (*in + size);
     return size;
   } else {
-    LOG_DBG("get not byte array\n ");
     (*in)--;
     return 0;
   }
@@ -153,7 +195,6 @@ edhoc_get_maps_num(uint8_t **in)
     num = byte ^ 0xa0;
     return num;
   } else {
-    LOG_DBG("get not map\n ");
     (*in)--;
     return 0;
   }
@@ -167,7 +208,6 @@ edhoc_get_array_num(uint8_t **in)
     num = byte ^ 0x80;
     return num;
   } else {
-    LOG_DBG("get not array\n ");
     (*in)--;
     return 0;
   }
@@ -189,7 +229,6 @@ get_text(uint8_t **in, char **out)
     return size;
   } else {
     (*in)--;
-    LOG_DBG("get not text array\n ");
     return -1;
   }
 }
@@ -211,9 +250,14 @@ size_t
 edhoc_serialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, bool suit_array)
 {
   size_t size = 0;
-  size += cbor_put_unsigned(&buffer, msg->method);
-  /* uint8_t suit_num = 0;
- while((msg->suit_U[suit_num] < 0) && (suit_num < EDHOC_MAX_SUITS)){
+  if(CONF_C1){
+    LOG_INFO("Include C1\n");
+    //uint8_t val = 0xf6;
+    size += cbor_put_nil(&buffer);
+  }
+  size += cbor_put_unsigned(&buffer, msg->method);/*
+   uint8_t suit_num = 0;
+  while((msg->suit_U[suit_num] < 0) && (suit_num < EDHOC_MAX_SUITS)){
     suit_num++;
   }*/
   if((msg->suit_I.len > 1) && suit_array){
@@ -225,7 +269,6 @@ edhoc_serialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, bool suit_array)
     }
   }
   else{
-    LOG_DBG("put unssigned");
     size += cbor_put_unsigned(&buffer, msg->suit_I.buf[0]);
   }
 
@@ -303,11 +346,10 @@ edhoc_deserialize_err(edhoc_msg_error *msg, unsigned char *buffer, uint8_t buff_
     int16_t len = get_text(&buffer, &msg->err.buf);
     if(len > 0) {
       msg->err.len = len;
-      LOG_DBG("Is an error msgs\n");
+      LOG_ERR("Is an error msgs\n");
       return RX_ERR_MSG;
     }
     else if(len == -1){
-      LOG_DBG("Is not an error msgs\n");
       return 0;      
     }
     else{
@@ -315,7 +357,6 @@ edhoc_deserialize_err(edhoc_msg_error *msg, unsigned char *buffer, uint8_t buff_
     }
   }
   
-  LOG_DBG("buffer (%d)",(int)(buff_f - buffer));
   if(buffer < buff_f) {
     msg->suit.buf = buffer;
     int16_t len = edhoc_get_unsigned(&buffer);
@@ -326,15 +367,12 @@ edhoc_deserialize_err(edhoc_msg_error *msg, unsigned char *buffer, uint8_t buff_
     else{
       msg->suit.len = 1;
     }
-    //msg->suit.len = buff_f - msg->suit.buf;
     if(msg->suit.len > 0){
-      LOG_DBG("The error message include a new suit proposal\n");
+      LOG_WARN("The error message include a new suit proposal\n");
       return 2;
     } 
   } 
 
-  /*LOG_INFO("ERR:");
-  print_char_8_info(msg->err.buf, msg->err.len);*/
   return 0;
 }
 int8_t
@@ -345,33 +383,29 @@ edhoc_deserialize_msg_1(edhoc_msg_1 *msg, unsigned char *buffer, size_t buff_sz)
   uint8_t *p_out = NULL;
   size_t out_sz = 0;
   uint8_t *buff_f = buffer + buff_sz;
+  
+
 
   if(buffer < buff_f) {
-    unint = (int8_t)edhoc_get_unsigned(&buffer);
+    unint = (int8_t)edhoc_get_nil(&buffer);
+    //if(unint)
+      unint = (int8_t)edhoc_get_unsigned(&buffer);
+    
     msg->method = unint;
   }
   /* Get the suit */
   if(buffer < buff_f) {
     msg->suit_I.buf = (uint8_t*) buffer;
     unint = (int8_t)edhoc_get_unsigned(&buffer);
-    //msg->suit_I.buf[0] = (uint8_t)unint;
-    LOG_DBG("(%d)\n", unint);
     if(unint < 0){
       unint = edhoc_get_array_num(&buffer);
-      LOG_DBG("is na array with %d num and buffer position  %d \n",unint,(uint8_t)*buffer);
-      //uint8_t i = 0; 
       msg->suit_I.buf = (uint8_t*)buffer;
       while(msg->suit_I.len < unint){
         edhoc_get_unsigned(&buffer);
-        //memcpy(msg->suit_I.buf+i,&in,1);
-        //msg->suit_I.buf[i] = (uint8_t) in;
-        //msg->suit_I.buf[i] = (uint8_t)edhoc_get_unsigned(&buffer);
-        msg->suit_I.len++;
-           
+        msg->suit_I.len++;     
       }
     }
     else{
-      //msg->suit_I.buf[0] = unint;
       msg->suit_I.len = 1;
     }
   }
@@ -410,6 +444,8 @@ edhoc_deserialize_msg_2(edhoc_msg_2 *msg, unsigned char *buffer, size_t buff_sz)
 {
   uint8_t data_sz = 0;
   msg->data_2.buf = buffer;
+  LOG_INFO("msg2 (%d):",buff_sz);
+  print_buff_8_info(buffer,buff_sz);
 
   uint8_t var = ((4 * METHOD) + CORR) % 4;
   if((var == 3) || (var == 1)) {
@@ -424,8 +460,8 @@ edhoc_deserialize_msg_2(edhoc_msg_2 *msg, unsigned char *buffer, size_t buff_sz)
   }
 
   msg->data.Gy.len = edhoc_get_bytes(&buffer, &msg->data.Gy.buf);
-  LOG_INFO("GY:");
-  print_buff_8_info(msg->data.Gy.buf, msg->data.Gy.len);
+  LOG_DBG("GY:");
+  print_buff_8_dbg(msg->data.Gy.buf, msg->data.Gy.len);
   if(msg->data.Gy.len == 0) {
     LOG_ERR("error code (%d)\n ", ERR_MSG_MALFORMED);
     return ERR_MSG_MALFORMED;
@@ -452,16 +488,13 @@ int8_t
 edhoc_deserialize_msg_3(edhoc_msg_3 *msg, unsigned char *buffer, size_t buff_sz)
 {
   msg->data_3.buf = buffer;
-  LOG_DBG("Desirealize msg 3\n");
   uint8_t var = ((4 * METHOD) + CORR) % 4;
   if((var == 2) || (var == 3)) {
-    LOG_DBG("Non CR\n");
     msg->data.Cr = (bstr){ NULL, 0 };
   } else {
     msg->data.Cr.len = edhoc_get_bytes(&buffer, &msg->data.Cr.buf);
     msg->data_3.len = msg->data.Cr.len + 1;
     if(msg->data.Cr.len == 0) {
-      LOG_DBG("CR byteidentfier\n");
       msg->data.Cr.buf = point_byte(&buffer);
       msg->data.Cr.len = 1;
       msg->data_3.len = msg->data.Cr.len;
@@ -469,6 +502,8 @@ edhoc_deserialize_msg_3(edhoc_msg_3 *msg, unsigned char *buffer, size_t buff_sz)
   }
 
   msg->cipher.len = edhoc_get_bytes(&buffer, &msg->cipher.buf);
+ // LOG_INFO("cipher (%d):",msg->cipher.len);
+//  print_buff_8_info(msg->cipher.buf,msg->cipher.len);
   if(msg->cipher.len == 0) {
     LOG_ERR("error code (%d)\n ", ERR_MSG_MALFORMED);
     return ERR_MSG_MALFORMED;
@@ -487,13 +522,53 @@ edhoc_get_cred_x_from_kid(uint8_t *kid, uint8_t kid_sz, cose_key_t **key)
   return ECC_KEY_BYTE_LENGHT;
 }
 uint8_t
+edhoc_get_cred_x_from_cert_hash(uint8_t *hash, uint8_t hash_sz, cose_key_t **key)
+{
+  LOG_DBG("HASH (%d):",hash_sz);
+  print_buff_8_dbg(hash,hash_sz);
+  cose_key_t *auth_key;
+  if(edhoc_check_key_list_cert_hash(hash, hash_sz, &auth_key) == 0) {
+    LOG_ERR("The authentication certification hash is not in the list\n");
+    return ERR_NOT_ALLOWED_IDENTITY;
+  }
+  *key = auth_key;
+  return ECC_KEY_BYTE_LENGHT;
+}
+
+uint8_t
+edhoc_get_cred_x_from_cert(uint8_t *cert, size_t cert_sz, cose_key_t **key)
+{
+  LOG_DBG("CERT (%d):",cert_sz);
+  print_buff_8_dbg(cert,cert_sz);
+  cose_key_t *auth_key;
+  if(edhoc_check_key_list_cert(cert, cert_sz, &auth_key) == 0) {
+    LOG_ERR("The authentication certification is not in the list\n");
+    return ERR_NOT_ALLOWED_IDENTITY;
+  }
+  *key = auth_key;
+  return ECC_KEY_BYTE_LENGHT;
+}
+/*uint8_t
+edhoc_export_cred_x_from_cert(uint8_t *cert, size_t cert_sz, cose_key_t **key)
+{
+  LOG_DBG("CERT (%d):",cert_sz);
+  print_buff_8_dbg(cert,cert_sz);
+  cose_key_t *auth_key;
+  if(edhoc_check_key_list_cert(cert, cert_sz, &auth_key) == 0) {
+    LOG_ERR("The authentication certification is not in the list\n");
+    return ERR_NOT_ALLOWED_IDENTITY;
+  }
+  *key = auth_key;
+  return ECC_KEY_BYTE_LENGHT;
+}*/
+size_t
 edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
 {
   *id_cred_x = *p;
   uint8_t num = edhoc_get_maps_num(p);
   uint8_t label;
-  uint8_t key_sz = 0;
-  uint8_t key_id_sz = 0;
+  size_t key_sz = 0;
+  size_t key_id_sz = 0;
   uint8_t *ptr = NULL;
   char* ch = NULL;
 
@@ -542,7 +617,8 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
      }
      break;*/
   /*(PRK_ID) ID_CRED_R = map(4:KID bstr)  (KID 4 Byte)*/
-  case 4:
+  case HEADER_KID:
+    LOG_DBG("HEADER_KID\n");
     key_id_sz = edhoc_get_bytes(p, &ptr);
     key_sz = edhoc_get_cred_x_from_kid(ptr, key_id_sz, &hkey);
     memcpy(key, hkey, sizeof(cose_key_t));
@@ -552,10 +628,41 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
       return key_sz;
     }
     break;
-
+  
+  case HEADER_X5T:
+  LOG_DBG("HEADER_X5T\n");
+   uint8_t array_num = edhoc_get_array_num(p);
+   int8_t hash_alg = get_negative(p);
+   key_id_sz = edhoc_get_bytes(p,&ptr);
+   //(*p)--;
+   LOG_DBG("HASH array num (%d), hash alg (%d), hash size (%d):",array_num, hash_alg, key_id_sz);
+   print_buff_8_dbg(ptr,key_id_sz);
+   key_sz = edhoc_get_cred_x_from_cert_hash(ptr,key_id_sz,&hkey);
+   memcpy(key, hkey, sizeof(cose_key_t));
+    if(key_sz == 0) {
+      return 0;
+    } else if(key_sz < 0) {
+      return key_sz;
+    }
+   break;
+    case HEADER_X5CHAIN:
+   LOG_DBG("HEADER_X5CHAIN\n");
+   key_id_sz = edhoc_get_bytes(p,&ptr);
+  // (*p)--;
+   LOG_DBG("CERT:");
+   //LOG_DBG("HASH array num (%d), hash alg (%d), hash size (%d):",array_num, hash_alg, key_id_sz);
+   print_buff_8_dbg(ptr,key_id_sz);
+   key_sz = edhoc_get_cred_x_from_cert(ptr,key_id_sz,&hkey);
+   memcpy(key, hkey, sizeof(cose_key_t));
+    if(key_sz == 0) {
+      return 0;
+    } else if(key_sz < 0) {
+      return key_sz;
+    }
+   break;
+ 
   /*(PRKI_2) ID_CRED_R = CRED_R */
   case 1:
-    LOG_DBG("case 1 PRK_ID\n");
     key->kty = edhoc_get_unsigned(p);
     int param = get_negative(p);
     if(param != 1) {
@@ -597,20 +704,20 @@ edhoc_get_id_cred_x(uint8_t **p, uint8_t **id_cred_x, cose_key_t *key)
     LOG_ERR("wrong key size\n ");
     return 0;
   }
-  uint8_t id_cred_x_sz = *p - *id_cred_x;
+  size_t id_cred_x_sz = *p - *id_cred_x;
   return id_cred_x_sz;
 }
-uint8_t
+size_t
 edhoc_get_sign(uint8_t **p, uint8_t **sign)
 {
-  uint8_t sign_sz = edhoc_get_bytes(p, sign);
+  size_t sign_sz = edhoc_get_bytes(p, sign);
   return sign_sz;
 }
-uint8_t
+size_t
 edhoc_get_ad(uint8_t **p, uint8_t *ad)
 {
   uint8_t *ptr;
-  uint8_t ad_sz = edhoc_get_bytes(p, &ptr);
+  size_t ad_sz = edhoc_get_bytes(p, &ptr);
   memcpy(ad, ptr, ad_sz);
   return ad_sz;
 }

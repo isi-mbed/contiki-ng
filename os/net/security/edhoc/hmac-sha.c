@@ -43,6 +43,7 @@
 #include "contiki-lib.h"
 #include "lib/memb.h"
 
+unsigned char buf[HMAC_DIGEST_SIZE];
 MEMB(hmac_context_storage, hmac_context_t, HASH_MAX);
 
 static inline
@@ -109,7 +110,7 @@ sha_new()
   sha_context_t *ctx;
   ctx = sha_context_new();
 #ifdef CC2538_SH2
-  LOG_INFO("SH256 for CC2538\n");
+  LOG_DBG("SH256 for CC2538\n");
   crypto_init();
 #endif
   if(ctx) {
@@ -240,7 +241,7 @@ hmac_update(hmac_context_t *ctx, const unsigned char *input, size_t input_sz)
 int
 hmac_finalize(hmac_context_t *ctx, unsigned char *result)
 {
-  unsigned char buf[HMAC_DIGEST_SIZE];
+
   size_t len;
   int er = 0;
   len = HMAC_DIGEST_SIZE;

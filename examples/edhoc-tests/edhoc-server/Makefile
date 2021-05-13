@@ -20,8 +20,8 @@ CONTIKI = ../../..
 
 
 # Include optional target-specific module
-#include $(CONTIKI)/Makefile.identify-target
-#MODULES_REL += $(TARGET)
+include $(CONTIKI)/Makefile.identify-target
+MODULES_REL += $(TARGET)
 
 
 
